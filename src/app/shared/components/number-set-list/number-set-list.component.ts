@@ -54,11 +54,11 @@ export interface NumberSetItem {
               @if (item.count !== undefined) {
                 <span class="count-badge">×{{ item.count }}</span>
               }
-              <span class="expand-icon">{{ expandedIndex() === i ? '▾' : '▸' }}</span>
             </div>
 
-            @if (showActions) {
-              <div class="item-actions-inline">
+            <div class="item-actions-inline">
+              <span class="expand-icon" (click)="toggleExpand(i); $event.stopPropagation()">{{ expandedIndex() === i ? '▾' : '▸' }}</span>
+              @if (showActions) {
                 @if (showAnalyze) {
                   <button class="action-btn action-analyze" (click)="analyze.emit(item); $event.stopPropagation()">
                     {{ 'saved.analyze' | translate }}
@@ -74,8 +74,8 @@ export interface NumberSetItem {
                     {{ 'saved.delete' | translate }}
                   </button>
                 }
-              </div>
-            }
+              }
+            </div>
           </div>
 
           @if (expandedIndex() === i) {
@@ -135,6 +135,7 @@ export interface NumberSetItem {
       cursor: pointer;
       flex: 1;
       min-width: 0;
+      overflow: hidden;
     }
     .count-badge {
       background: var(--primary);
@@ -146,14 +147,16 @@ export interface NumberSetItem {
       flex-shrink: 0;
     }
     .expand-icon {
-      margin-inline-start: auto;
       color: var(--text-secondary);
       font-size: 14px;
       flex-shrink: 0;
+      cursor: pointer;
+      line-height: 1;
     }
     .item-actions-inline {
       display: flex;
-      gap: 4px;
+      align-items: center;
+      gap: 3px;
       flex-shrink: 0;
     }
     .item-meta {
@@ -167,10 +170,11 @@ export interface NumberSetItem {
     .meta-row { display: flex; gap: 8px; font-size: 13px; }
     .meta-label { color: var(--text-secondary); }
     .action-btn {
-      padding: 4px 10px;
+      padding: 2px 6px;
       font-size: 12px;
       border-radius: 4px;
       white-space: nowrap;
+      line-height: 1.4;
     }
     .action-analyze { background: var(--success); color: #fff; }
     .action-save { background: var(--primary); color: #fff; }
@@ -199,29 +203,6 @@ export interface NumberSetItem {
     }
     @keyframes spin {
       to { transform: rotate(360deg); }
-    }
-
-    /* Swipeable sliding behavior on touch / narrow screens */
-    @media (max-width: 768px) {
-      .item-row {
-        position: relative;
-        touch-action: pan-y;
-      }
-      .item-actions-inline {
-        position: absolute;
-        inset-inline-end: 0;
-        top: 0;
-        bottom: 0;
-        transform: translateX(100%);
-        transition: transform 0.2s ease;
-        margin: 0;
-      }
-      [dir="rtl"] .item-actions-inline {
-        transform: translateX(-100%);
-      }
-      .list-item.slid .item-actions-inline {
-        transform: translateX(0);
-      }
     }
   `],
 })
