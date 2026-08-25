@@ -8,19 +8,21 @@ import { AgentService } from '../../../core/api/agent.service';
 import { LanguageService } from '../../../core/i18n/language.service';
 import { ToastService } from '../../../shared/components/toast/toast.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
+import { DatePipe } from '@angular/common';
 
 interface AuditLogRow {
   userSub: string;
   tier: string;
   action: string;
   details: string;
-  timestamp: string;
+  /** Raw millisecond timestamp, or null if missing. Formatted in template via DatePipe. */
+  ts: number | null;
 }
 
 @Component({
   selector: 'app-audit-log',
   standalone: true,
-  imports: [FormsModule, ButtonModule, CardModule, TableModule, InputTextModule, TranslatePipe],
+  imports: [FormsModule, ButtonModule, CardModule, TableModule, InputTextModule, TranslatePipe, DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p-card header="{{ 'admin.auditLog' | translate }}" styleClass="admin-card">
@@ -51,7 +53,7 @@ interface AuditLogRow {
             <td><span class="tier-badge tier-{{ row.tier }}">{{ row.tier }}</span></td>
             <td>{{ row.action }}</td>
             <td class="details-cell">{{ row.details }}</td>
-            <td>{{ row.timestamp }}</td>
+            <td>{{ row.ts | date: 'yyyy-MM-dd' }}</td>
           </tr>
         </ng-template>
         <ng-template #emptymessage>
@@ -81,12 +83,16 @@ interface AuditLogRow {
     .tier-paid { background: #fff3e0; color: #e65100; }
     .tier-admin { background: #e3f2fd; color: #1565c0; }
     .details-cell {
-      max-width: 300px;
+      max-width: 200px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
     .empty-table { text-align: center; color: var(--text-secondary); padding: 24px; }
+    :host ::ng-deep .p-datatable-table-container {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
   `],
 })
 export class AuditLogComponent implements OnInit {
@@ -114,7 +120,7 @@ export class AuditLogComponent implements OnInit {
           tier: r.tier ?? 'free',
           action: r.action ?? '',
           details: typeof r.details === 'string' ? r.details : JSON.stringify(r.details ?? {}),
-          timestamp: r.ts ? new Date(r.ts * 1000).toLocaleString() : '',
+          ts: r.ts ? r.ts * 1000 : null,
         })));
         this.filter();
       },

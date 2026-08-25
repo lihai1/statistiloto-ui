@@ -77,18 +77,20 @@ import { AnalyzedGroup, groupBySize } from '../../shared/utils/arrays-filter';
 
           <div class="tabs">
             @for (g of groups(); track g.size) {
-              <button
-                class="tab"
-                [class.active]="currentTab() === g.size"
-                (click)="selectTab(g.size)"
-              >
-                {{ g.size }}
-              </button>
+              @if (g.entries.length > 0) {
+                <button
+                  class="tab"
+                  [class.active]="currentTab() === g.size"
+                  (click)="selectTab(g.size)"
+                >
+                  {{ g.size }}
+                </button>
+              }
             }
           </div>
 
           @for (g of groups(); track g.size) {
-            @if (currentTab() === g.size) {
+            @if (g.entries.length > 0 && currentTab() === g.size) {
               <div class="tab-content">
                 <div class="group-title" (click)="toggleExpand(g.size)">
                   <span class="expand-icon">{{ expandedTabs().has(g.size) ? '▾' : '▸' }}</span>
@@ -281,9 +283,13 @@ export class AnalyzeComponent {
     this.api.analyze(req).subscribe({
       next: (res) => {
         this.result.set(res);
-        this.groups.set(groupBySize(res.frequencyGroups, 6, this.lang.lang()));
-        this.currentTab.set(1);
-        this.expandedTabs.set(new Set([1]));
+        const analyzed = groupBySize(res.frequencyGroups, 6, this.lang.lang());
+        this.groups.set(analyzed);
+        // Auto-select the first group that has entries (not necessarily size 1).
+        const firstWithEntries = analyzed.find((g) => g.entries.length > 0);
+        const firstSize = firstWithEntries?.size ?? 1;
+        this.currentTab.set(firstSize);
+        this.expandedTabs.set(new Set([firstSize]));
         this.toast.hideLoading();
       },
       error: (err) => {
@@ -319,6 +325,10 @@ export class AnalyzeComponent {
     const selected = this.selected().join(', ');
     this.agentContext.ask(
       `I analyzed the numbers ${selected} against historical draws. Can you summarize the frequency results and suggest which number combinations appear most often?`,
+      {
+        page: 'analyze',
+        numbers: this.selected(),
+      },
     );
   }
 }

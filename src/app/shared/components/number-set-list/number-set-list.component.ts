@@ -95,7 +95,7 @@ export interface NumberSetItem {
               @if (item.createdAt) {
                 <div class="meta-row">
                   <span class="meta-label">{{ 'saved.title' | translate }}:</span>
-                  <span>{{ item.createdAt | date: 'mediumDate' }}</span>
+                  <span>{{ item.createdAt | date: 'yyyy-MM-dd' }}</span>
                 </div>
               }
             </div>

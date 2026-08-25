@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { fromEvent } from 'rxjs';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from './core/auth/auth.service';
 import { LanguageService } from './core/i18n/language.service';
@@ -152,11 +154,27 @@ export class AppComponent {
   protected auth = inject(AuthService);
   protected lang = inject(LanguageService);
   protected theme = inject(ThemeService);
+  private destroyRef = inject(DestroyRef);
 
-  sidebarOpen = signal(typeof window !== 'undefined' && window.innerWidth > 768);
+  readonly mobileBreakpoint = 768;
+  isMobile = signal(typeof window !== 'undefined' && window.innerWidth <= this.mobileBreakpoint);
+  sidebarOpen = signal(typeof window !== 'undefined' && window.innerWidth > this.mobileBreakpoint);
 
-  isMobile(): boolean {
-    return window.innerWidth <= 768;
+  constructor() {
+    // Track window resize so isMobile() and sidebar state stay reactive.
+    if (typeof window !== 'undefined') {
+      fromEvent(window, 'resize').pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+        const mobile = window.innerWidth <= this.mobileBreakpoint;
+        this.isMobile.set(mobile);
+        // When switching to desktop, auto-open the sidebar.
+        // When switching to mobile, auto-close it (it's an overlay there).
+        if (!mobile && !this.sidebarOpen()) {
+          this.sidebarOpen.set(true);
+        } else if (mobile && this.sidebarOpen()) {
+          this.sidebarOpen.set(false);
+        }
+      });
+    }
   }
 
   toggleSidebar(): void {

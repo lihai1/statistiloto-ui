@@ -117,6 +117,10 @@ interface TokenUsageRow {
     .tier-paid { background: #fff3e0; color: #e65100; }
     .tier-admin { background: #e3f2fd; color: #1565c0; }
     .empty-table { text-align: center; color: var(--text-secondary); padding: 24px; }
+    :host ::ng-deep .p-datatable-table-container {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
   `],
 })
 export class TokenUsageComponent implements OnInit {

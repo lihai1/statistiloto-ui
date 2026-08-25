@@ -138,10 +138,12 @@ export class AgentWidgetComponent {
       if (this.agentContext.openWidget()) {
         this.open.set(true);
         const message = this.agentContext.pendingMessage();
+        const ctx = this.agentContext.pendingContext();
         if (message) {
           // The chat ViewChild may not be rendered yet on the same cycle the
           // panel opens, so defer prefilling to the next microtask.
           queueMicrotask(() => {
+            if (ctx) this.chat!.context = ctx;
             this.chat?.prefill(message);
             this.agentContext.consume();
           });
@@ -151,7 +153,7 @@ export class AgentWidgetComponent {
   }
 
   /** Open the widget with a pre-filled contextual message. */
-  openWithContext(message: string): void {
-    this.agentContext.ask(message);
+  openWithContext(message: string, context?: import('../../../core/api/agent.service').AgentChatContext): void {
+    this.agentContext.ask(message, context);
   }
 }

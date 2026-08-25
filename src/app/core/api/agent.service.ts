@@ -3,10 +3,27 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
+export interface AgentChatContext {
+  page?: string;           // 'statistics' | 'analyze' | 'generate' | 'assistant'
+  numbers?: number[];      // selected numbers (analyze page)
+  groupSize?: number;      // current group size (statistics page)
+  ordering?: 'hot' | 'cold';
+  archiveWindow?: { from?: string; to?: string; lastDraws?: number };
+}
+
+export interface ReindexResponse {
+  status: string;
+  indexed: number;
+  skipped: number;
+  total_chunks: number;
+  files: string[];
+}
+
 export interface AgentChatRequest {
   sessionId: string;
   message: string;
   intent?: string;
+  context?: AgentChatContext;
 }
 
 export interface AgentApproveRequest {
@@ -32,6 +49,7 @@ export interface LlmConfig {
 export interface LlmConfigUpdate {
   provider: string;
   model: string;
+  name?: string;
   baseUrl?: string;
   apiKey?: string;
   requestTimeoutSeconds?: number;
@@ -42,6 +60,18 @@ export interface LlmConfigUpdateResponse {
   model: string;
   status: string;
   note: string;
+}
+
+export interface LlmConfigRow {
+  id: number;
+  name: string;
+  provider: string;
+  model: string;
+  base_url: string;
+  api_key: string;
+  request_timeout_seconds: number;
+  is_active: boolean;
+  updated_at: number;
 }
 
 export interface AgentMessage {
@@ -71,6 +101,39 @@ export interface AuditLogRow {
   ts: number;
 }
 
+export interface ChatSession {
+  session_id: string;
+  thread_id: string;
+  title: string;
+  last_message: string;
+  message_count: number;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface ChatSessionListResponse {
+  sessions: ChatSession[];
+  limit: number | null;  // null = unlimited (admin)
+  tier: string;
+}
+
+export interface ChatSessionMessagesResponse {
+  session_id: string;
+  messages: { role: string; content: string; timestamp: number }[];
+}
+
+export interface LlmModelsResponse {
+  provider: string;
+  models: string[];
+}
+
+export interface LlmConfigTestResponse {
+  status: 'ok' | 'error';
+  id: number;
+  response?: string;
+  error?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AgentService {
   private readonly http = inject(HttpClient);
@@ -92,6 +155,22 @@ export class AgentService {
     return this.http.put<LlmConfigUpdateResponse>(`${this.base}/llm-config`, req);
   }
 
+  listLlmConfigs(): Observable<{ configs: LlmConfigRow[] }> {
+    return this.http.get<{ configs: LlmConfigRow[] }>(`${this.base}/llm-configs`);
+  }
+
+  createLlmConfig(req: LlmConfigUpdate): Observable<{ status: string; id: number; name: string }> {
+    return this.http.post<{ status: string; id: number; name: string }>(`${this.base}/llm-configs`, req);
+  }
+
+  activateLlmConfig(configId: number): Observable<{ status: string; id: number }> {
+    return this.http.put<{ status: string; id: number }>(`${this.base}/llm-configs/${configId}/activate`, {});
+  }
+
+  deleteLlmConfig(configId: number): Observable<{ status: string; id: number }> {
+    return this.http.delete<{ status: string; id: number }>(`${this.base}/llm-configs/${configId}`);
+  }
+
   getHealth(): Observable<{ status: string }> {
     return this.http.get<{ status: string }>(`${this.base}/health`);
   }
@@ -102,6 +181,34 @@ export class AgentService {
 
   getAuditLog(limit: number = 50): Observable<{ rows: AuditLogRow[] }> {
     return this.http.get<{ rows: AuditLogRow[] }>(`${this.base}/audit-log?limit=${limit}`);
+  }
+
+  reindexDocs(): Observable<ReindexResponse> {
+    return this.http.post<ReindexResponse>(`${this.base}/reindex`, {});
+  }
+
+  listLlmModels(provider: string): Observable<LlmModelsResponse> {
+    return this.http.get<LlmModelsResponse>(`${this.base}/llm-models?provider=${encodeURIComponent(provider)}`);
+  }
+
+  testLlmConfig(configId: number): Observable<LlmConfigTestResponse> {
+    return this.http.post<LlmConfigTestResponse>(`${this.base}/llm-configs/${configId}/test`, {});
+  }
+
+  listSessions(): Observable<ChatSessionListResponse> {
+    return this.http.get<ChatSessionListResponse>(`${this.base}/sessions`);
+  }
+
+  getSessionMessages(sessionId: string): Observable<ChatSessionMessagesResponse> {
+    return this.http.get<ChatSessionMessagesResponse>(`${this.base}/sessions/${encodeURIComponent(sessionId)}`);
+  }
+
+  deleteSession(sessionId: string): Observable<{ status: string; session_id: string }> {
+    return this.http.delete<{ status: string; session_id: string }>(`${this.base}/sessions/${encodeURIComponent(sessionId)}`);
+  }
+
+  deleteAllSessions(): Observable<{ status: string; count: number }> {
+    return this.http.delete<{ status: string; count: number }>(`${this.base}/sessions`);
   }
 
   /** Generate a random session ID for a new conversation. */

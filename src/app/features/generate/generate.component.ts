@@ -272,6 +272,9 @@ export class GenerateComponent {
     const count = this.result()?.forms?.length ?? 0;
     this.agentContext.ask(
       `I just generated ${count} lottery forms. Can you analyze them and tell me which one has the best historical coverage?`,
+      {
+        page: 'generate',
+      },
     );
   }
 

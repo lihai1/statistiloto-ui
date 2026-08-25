@@ -53,10 +53,14 @@ Derived from the actual codebase (`package.json`, `angular.json`,
   requests a write operation.
 
 - **FR-8** **Admin — LLM Config** (`/admin/llm-config`, auth + admin role)
-  — view and update global LLM configuration at runtime. Provider select
-  (ollama / gemini / mock), model name, base URL, API key, request timeout.
-  Uses PrimeNG `p-select`, `p-inputtext`, `p-button`, `p-card`. Calls
-  `GET /api/agent/llm-config` and `PUT /api/agent/llm-config`.
+  — manage LLM configurations at runtime. Edit the active config (provider
+  select ollama/gemini/mock, model name, base URL, API key, request timeout)
+  via `GET /api/agent/llm-config` and `PUT /api/agent/llm-config`. List, create,
+  activate, delete, and smoke-test stored configurations via
+  `GET/POST /api/agent/llm-configs`, `PUT /api/agent/llm-configs/{id}/activate`,
+  `POST /api/agent/llm-configs/{id}/test`, `DELETE /api/agent/llm-configs/{id}`.
+  Fetch available models per provider via `GET /api/agent/llm-models?provider=...`.
+  Uses PrimeNG `p-select`, `p-inputtext`, `p-button`, `p-card`.
 
 - **FR-9** **Admin — Scraper** (`/admin/scraper`, auth + admin role) —
   trigger the lottery scraper manually. Shows status indicator (idle /
@@ -77,6 +81,17 @@ Derived from the actual codebase (`package.json`, `angular.json`,
 - **FR-12** **Admin shell** (`/admin`, auth + admin role) — container
   component with child routes for all admin sub-pages. Default redirect
   to `/admin/llm-config`.
+
+- **FR-12a** **Agent Sessions** (any authenticated user) — the assistant
+  experience exposes session management: list the user's chat sessions, load
+  a session's full message history, delete one session, or delete all
+  sessions. Calls `GET /api/agent/sessions`,
+  `GET /api/agent/sessions/{sessionId}`,
+  `DELETE /api/agent/sessions/{sessionId}`, `DELETE /api/agent/sessions`.
+
+- **FR-12b** **Admin — RAG Reindex** (auth + admin role) — trigger a rebuild
+  of the agent's `docs` RAG corpus. Calls `POST /api/agent/reindex`. Exposed
+  from the admin section (currently driven via the agent chat / admin tools).
 
 ### Authentication
 - **FR-13** Users log in via Keycloak OIDC (authorization-code + PKCE).
@@ -157,8 +172,17 @@ Derived from the actual codebase (`package.json`, `angular.json`,
 - **API-3** `ApiService` wraps `HttpClient` for all lottery endpoints
   (`/api/generate/form`, `/api/generate/statistics`, `/api/generate/analyze`).
 - **API-4** `AgentService` handles SSE streaming for `/api/agent/chat` and
-  POST for `/api/agent/approve`.
-- **API-5** `AgentContextService` manages agent session state and chat history.
+  POST for `/api/agent/approve`. It also wraps the admin/telemetry surface:
+  LLM config (`GET/PUT /api/agent/llm-config`), stored LLM configs
+  (`GET/POST /api/agent/llm-configs`, `PUT .../{id}/activate`,
+  `POST .../{id}/test`, `DELETE .../{id}`), model listing
+  (`GET /api/agent/llm-models`), token usage (`GET /api/agent/token-usage`),
+  audit log (`GET /api/agent/audit-log`), RAG reindex (`POST /api/agent/reindex`),
+  health (`GET /api/agent/health`), and chat session CRUD
+  (`GET/DELETE /api/agent/sessions`, `GET/DELETE /api/agent/sessions/{id}`).
+- **API-5** `AgentContextService` manages agent session state and chat history,
+  and exposes `ask()` to open the assistant widget with a pre-filled message
+  from any feature page.
 - **API-6** All API base URLs are relative (`/api`) — Traefik routes to the BFF.
 
 ---

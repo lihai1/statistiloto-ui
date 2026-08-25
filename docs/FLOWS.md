@@ -133,12 +133,22 @@ flowchart TD
     ADMIN[Admin user logged in] --> MENU{Admin menu}
 
     MENU -->|LLM Config| LLM_PAGE[LLM Config Component]
-    LLM_PAGE --> LLM_GET[GET /api/agent/llm-config]
-    LLM_GET --> LLM_SHOW[Display current config]
-    LLM_SHOW --> LLM_EDIT[Admin edits provider/model/url]
-    LLM_EDIT --> LLM_PUT[PUT /api/agent/llm-config]
+    LLM_PAGE --> LLM_GET[GET /api/agent/llm-config<br/>+ GET /api/agent/llm-configs]
+    LLM_GET --> LLM_SHOW[Display active config + stored configs list]
+    LLM_SHOW --> LLM_EDIT{Admin action?}
+    LLM_EDIT -->|Edit active| LLM_PUT[PUT /api/agent/llm-config]
+    LLM_EDIT -->|Create stored| LLM_CREATE[POST /api/agent/llm-configs]
+    LLM_EDIT -->|Activate stored| LLM_ACT[PUT /api/agent/llm-configs/id/activate]
+    LLM_EDIT -->|Test stored| LLM_TEST[POST /api/agent/llm-configs/id/test]
+    LLM_EDIT -->|Delete stored| LLM_DEL[DELETE /api/agent/llm-configs/id]
+    LLM_EDIT -->|Fetch models| LLM_MODELS[GET /api/agent/llm-models?provider=...]
     LLM_PUT --> LLM_RELOAD[Agent hot-reloads LLM]
+    LLM_ACT --> LLM_RELOAD
     LLM_RELOAD --> LLM_DONE[Show success toast]
+    LLM_CREATE --> LLM_DONE
+    LLM_TEST --> LLM_TEST_RESULT[Show test result toast]
+    LLM_DEL --> LLM_DONE
+    LLM_MODELS --> LLM_SHOW
 
     MENU -->|Scraper| SCRAPE_PAGE[Scraper Component]
     SCRAPE_PAGE --> SCRAPE_TRIGGER["Click 'Trigger Scraper'"]
@@ -149,10 +159,52 @@ flowchart TD
     SCRAPE_RUN --> SCRAPE_DONE[Show result]
 
     MENU -->|Audit Log| AUDIT_PAGE[Audit Log Component]
-    AUDIT_PAGE --> AUDIT_GET[GET /api/agent/audit-log]
+    AUDIT_PAGE --> AUDIT_GET[GET /api/agent/audit-log?limit=50]
     AUDIT_GET --> AUDIT_SHOW[Display log entries table]
 
     MENU -->|Token Usage| TOKEN_PAGE[Token Usage Component]
     TOKEN_PAGE --> TOKEN_GET[GET /api/agent/token-usage]
-    TOKEN_GET --> TOKEN_SHOW[Display token consumption charts]
+    TOKEN_GET --> TOKEN_SHOW[Display token consumption table]
+```
+
+---
+
+## 6. Agent Session Management Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant UI as Assistant Component
+    participant AGENT as AgentService
+    participant BFF as Java BFF (via Traefik)
+
+    Note over U,BFF: List sessions
+    U->>UI: Open assistant / sessions panel
+    UI->>AGENT: listSessions()
+    AGENT->>BFF: GET /api/agent/sessions (Bearer JWT)
+    BFF-->>AGENT: 200 { sessions: [...], limit, tier }
+    AGENT-->>UI: Session list (newest first) + tier limit
+    UI->>UI: Render session list
+
+    Note over U,BFF: Load a session's messages
+    U->>UI: Click a session
+    UI->>AGENT: getSessionMessages(sessionId)
+    AGENT->>BFF: GET /api/agent/sessions/{sessionId}
+    BFF-->>AGENT: 200 { session_id, messages: [...] }
+    AGENT-->>UI: Full message history
+    UI->>UI: Render conversation
+
+    Note over U,BFF: Delete one session
+    U->>UI: Delete a session
+    UI->>AGENT: deleteSession(sessionId)
+    AGENT->>BFF: DELETE /api/agent/sessions/{sessionId}
+    BFF-->>AGENT: 200 { status: "deleted", session_id }
+    AGENT-->>UI: Remove from list
+
+    Note over U,BFF: Delete all sessions
+    U->>UI: "Delete all"
+    UI->>AGENT: deleteAllSessions()
+    AGENT->>BFF: DELETE /api/agent/sessions
+    BFF-->>AGENT: 200 { status: "deleted", count }
+    AGENT-->>UI: Clear list
 ```

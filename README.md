@@ -30,7 +30,7 @@ Angular 20 PWA frontend for Statistiloto — Israeli lottery analysis and number
 | `/saved` | `SavedNumbersComponent` | View, analyze, and delete saved numbers and generated forms |
 | `/assistant` | `AssistantComponent` | Full-page AI assistant chat with human-in-the-loop approval |
 | `/admin` | `AdminComponent` | Admin dashboard (redirects to `/admin/llm-config`) |
-| `/admin/llm-config` | `LlmConfigComponent` | Configure LLM provider, model, API key, and timeout |
+| `/admin/llm-config` | `LlmConfigComponent` | Manage LLM configurations: edit the active config (provider/model/API key/timeout), list/create/activate/delete/test stored configs, and fetch available models per provider |
 | `/admin/token-usage` | `TokenUsageComponent` | View per-user token consumption and cost |
 | `/admin/audit-log` | `AuditLogComponent` | Searchable audit log of user actions |
 | `/admin/scraper` | `ScraperComponent` | Trigger the lottery data scraper (with HITL approval) |
@@ -84,7 +84,7 @@ ui/
 │   │   ├── core/
 │   │   │   ├── api/
 │   │   │   │   ├── api.service.ts           # BFF REST calls (generate, statistics, analyze, saved numbers)
-│   │   │   │   ├── agent.service.ts         # Agent chat, LLM config, token usage, audit log, scraper
+│   │   │   │   ├── agent.service.ts         # Agent chat/approve, LLM config (active + stored CRUD/test/activate), llm-models, token usage, audit log, scraper, sessions CRUD, reindex
 │   │   │   │   └── agent-context.service.ts # Signal bridge for contextual AI triggers
 │   │   │   ├── auth/
 │   │   │   │   ├── auth-config.ts           # KeycloakConfig injection token

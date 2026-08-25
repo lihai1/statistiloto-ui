@@ -164,6 +164,15 @@ export class StatisticsComponent {
     const count = this.result()?.pairs?.length ?? 0;
     this.agentContext.ask(
       `I found ${count} frequent number groups in the statistics. Which of these groups has the highest historical frequency?`,
+      {
+        page: 'statistics',
+        groupSize: this.groupSize,
+        ordering: this.strength === 'strong' ? 'hot' : 'cold',
+        archiveWindow: {
+          from: this.archive.from(),
+          to: this.archive.to(),
+        },
+      },
     );
   }
 }

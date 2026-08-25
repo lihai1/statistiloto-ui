@@ -13,10 +13,17 @@ describe('AssistantComponent', () => {
       'chat',
       'approve',
       'generateSessionId',
+      'listSessions',
+      'getSessionMessages',
+      'deleteSession',
+      'deleteAllSessions',
     ]);
     mockAgentService.generateSessionId.and.returnValue('session-assistant-1');
     mockAgentService.chat.and.returnValue(of({ response: 'ok', paused: false }));
     mockAgentService.approve.and.returnValue(of({ response: 'ok', paused: false }));
+    mockAgentService.listSessions.and.returnValue(of({ sessions: [], limit: 1, tier: 'free' }));
+    mockAgentService.deleteSession.and.returnValue(of({ status: 'deleted', session_id: 'x' }));
+    mockAgentService.deleteAllSessions.and.returnValue(of({ status: 'deleted', count: 0 }));
 
     await TestBed.configureTestingModule({
       imports: [AssistantComponent],
@@ -33,20 +40,23 @@ describe('AssistantComponent', () => {
   });
 
   it('should initialize with a session ID from AgentService', () => {
-    expect(component.sessionId()).toBeTruthy();
+    expect(component.activeSessionId()).toBeTruthy();
     expect(mockAgentService.generateSessionId).toHaveBeenCalled();
   });
 
+  it('should load sessions on init', () => {
+    expect(mockAgentService.listSessions).toHaveBeenCalledTimes(1);
+    expect(component.sessions().length).toBe(0);
+    expect(component.sessionLimit()).toBe(1);
+  });
+
   it('newChat() should generate a new session ID', () => {
-    const firstId = component.sessionId();
+    const firstId = component.activeSessionId();
     mockAgentService.generateSessionId.and.returnValue('session-assistant-2');
 
     component.newChat();
 
-    expect(component.sessionId()).toBe('session-assistant-2');
-    expect(component.sessionId()).not.toBe(firstId);
-    // generateSessionId is also called by the child AgentChatComponent,
-    // so we only assert that newChat() triggered at least one more call.
-    expect(mockAgentService.generateSessionId.calls.count()).toBeGreaterThan(1);
+    expect(component.activeSessionId()).toBe('session-assistant-2');
+    expect(component.activeSessionId()).not.toBe(firstId);
   });
 });

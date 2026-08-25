@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
-import { AgentService, AgentMessage } from '../../../core/api/agent.service';
+import { AgentService, AgentMessage, AgentChatContext } from '../../../core/api/agent.service';
 import { LanguageService } from '../../../core/i18n/language.service';
 import { ToastService } from '../toast/toast.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
@@ -209,6 +209,15 @@ export class AgentChatComponent implements AfterViewChecked {
     return this._sessionId;
   }
   @Input() intent: string | null = null;
+  @Input() context: AgentChatContext | null = null;
+
+  /** Pre-loaded message history (from loading a past session). */
+  @Input() set preloadedMessages(value: { role: 'user' | 'assistant'; content: string; timestamp: number }[] | null) {
+    if (value && value.length >= 0) {
+      this.messages.set(value);
+      this.shouldScroll = true;
+    }
+  }
   @Output() messageSent = new EventEmitter<string>();
 
   @ViewChild('scrollContainer') scrollContainer?: ElementRef;
@@ -249,6 +258,7 @@ export class AgentChatComponent implements AfterViewChecked {
       sessionId: this.sessionId,
       message: text,
       intent: this.intent ?? undefined,
+      context: this.context ?? undefined,
     }).subscribe({
       next: (res) => {
         this.loading.set(false);
