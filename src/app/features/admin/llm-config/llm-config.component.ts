@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, signal, OnInit, ChangeDetectorRef } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal, OnInit, ChangeDetectorRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -311,6 +312,7 @@ export class LlmConfigComponent implements OnInit {
   private toast = inject(ToastService);
   protected lang = inject(LanguageService);
   private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
 
   /** Provider metadata with known base URLs and field visibility. */
   providers: ProviderMeta[] = [
@@ -364,7 +366,7 @@ export class LlmConfigComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadConfigs();
-    this.agentService.getLlmConfig().subscribe({
+    this.agentService.getLlmConfig().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (cfg) => {
         this.config.provider = cfg.provider;
         this.config.model = cfg.model;
@@ -383,7 +385,7 @@ export class LlmConfigComponent implements OnInit {
   }
 
   private loadConfigs(): void {
-    this.agentService.listLlmConfigs().subscribe({
+    this.agentService.listLlmConfigs().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => this.configs.set(res.configs),
       error: () => {}, // silently ignore
     });
@@ -410,7 +412,7 @@ export class LlmConfigComponent implements OnInit {
 
   fetchModels(): void {
     this.loadingModels.set(true);
-    this.agentService.listLlmModels(this.config.provider).subscribe({
+    this.agentService.listLlmModels(this.config.provider).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         this.availableModels.set(res.models);
         this.loadingModels.set(false);
@@ -428,7 +430,7 @@ export class LlmConfigComponent implements OnInit {
       return;
     }
     this.saving.set(true);
-    this.agentService.updateLlmConfig(this.config).subscribe({
+    this.agentService.updateLlmConfig(this.config).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         this.saving.set(false);
         this.statusNote.set(res.note || res.status);
@@ -448,7 +450,7 @@ export class LlmConfigComponent implements OnInit {
       return;
     }
     this.saving.set(true);
-    this.agentService.createLlmConfig(this.config).subscribe({
+    this.agentService.createLlmConfig(this.config).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.saving.set(false);
         this.statusNote.set(this.lang.t('admin.llmConfig.savedNotActive'));
@@ -463,7 +465,7 @@ export class LlmConfigComponent implements OnInit {
   }
 
   activateConfig(c: LlmConfigRow): void {
-    this.agentService.activateLlmConfig(c.id).subscribe({
+    this.agentService.activateLlmConfig(c.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.toast.success(this.lang.t('admin.llmConfig.activated'));
         this.loadConfigs();
@@ -482,7 +484,7 @@ export class LlmConfigComponent implements OnInit {
 
   deleteConfig(c: LlmConfigRow): void {
     if (!confirm(this.lang.t('admin.llmConfig.deleteConfirm'))) return;
-    this.agentService.deleteLlmConfig(c.id).subscribe({
+    this.agentService.deleteLlmConfig(c.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.toast.success(this.lang.t('admin.llmConfig.deleted'));
         this.loadConfigs();
@@ -494,7 +496,7 @@ export class LlmConfigComponent implements OnInit {
   testConfig(c: LlmConfigRow): void {
     this.testingId.set(c.id);
     this.testResult.set(null);
-    this.agentService.testLlmConfig(c.id).subscribe({
+    this.agentService.testLlmConfig(c.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         this.testingId.set(null);
         this.testResult.set(res);

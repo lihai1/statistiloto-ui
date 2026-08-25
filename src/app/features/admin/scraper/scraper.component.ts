@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { AgentService, AgentChatResponse } from '../../../core/api/agent.service';
@@ -115,6 +116,7 @@ export class ScraperComponent {
   private agentService = inject(AgentService);
   private toast = inject(ToastService);
   protected lang = inject(LanguageService);
+  private destroyRef = inject(DestroyRef);
 
   triggering = signal(false);
   triggered = signal(false);
@@ -133,7 +135,7 @@ export class ScraperComponent {
       sessionId: this.sessionId,
       message: 'Trigger the lottery scraper to fetch new draw data',
       intent: 'admin_ops',
-    }).subscribe({
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         this.triggering.set(false);
         if (res.paused) {
@@ -160,7 +162,7 @@ export class ScraperComponent {
     this.agentService.approve({
       sessionId: this.sessionId,
       approved,
-    }).subscribe({
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         this.triggering.set(false);
         this.triggered.set(false);

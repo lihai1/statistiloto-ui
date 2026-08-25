@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api/api.service';
 import { AgentContextService } from '../../core/api/agent-context.service';
@@ -12,6 +13,7 @@ import {
   NumberSetItem,
 } from '../../shared/components/number-set-list/number-set-list.component';
 import { AnalyzeModalComponent } from '../../shared/components/analyze-modal/analyze-modal.component';
+import { subscribeWithError } from '../../shared/utils/http-loading';
 import {
   LotteryResultResponse,
   StatisticsRequest,
@@ -115,6 +117,7 @@ export class StatisticsComponent {
   protected lang = inject(LanguageService);
   private archive = inject(ArchiveWindowService);
   private agentContext = inject(AgentContextService);
+  private destroyRef = inject(DestroyRef);
 
   groupSizes = [1, 2, 3, 4, 5, 6];
   groupSize = 2;
@@ -128,7 +131,6 @@ export class StatisticsComponent {
   modalForm = signal<number[]>([]);
 
   load(): void {
-    this.toast.showLoading();
     const req: StatisticsRequest = {
       howMany: this.howMany,
       formType: this.groupSize,
@@ -137,7 +139,11 @@ export class StatisticsComponent {
       strength: this.strength,
     };
 
-    this.api.getStatistics(req).subscribe({
+    subscribeWithError({
+      observable: this.api.getStatistics(req),
+      toast: this.toast,
+      lang: this.lang,
+      destroyRef: this.destroyRef,
       next: (res) => {
         this.result.set(res);
         this.pairItems.set(
@@ -146,11 +152,6 @@ export class StatisticsComponent {
             count: p.count,
           })),
         );
-        this.toast.hideLoading();
-      },
-      error: (err) => {
-        this.toast.hideLoading();
-        this.toast.error(err.message ?? this.lang.t('common.connectionError'));
       },
     });
   }

@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { TableModule } from 'primeng/table';
@@ -127,6 +128,7 @@ export class TokenUsageComponent implements OnInit {
   private agentService = inject(AgentService);
   private toast = inject(ToastService);
   protected lang = inject(LanguageService);
+  private destroyRef = inject(DestroyRef);
 
   usageData = signal<TokenUsageRow[]>([]);
   loading = signal(false);
@@ -144,7 +146,7 @@ export class TokenUsageComponent implements OnInit {
 
   load(): void {
     this.loading.set(true);
-    this.agentService.getTokenUsage().subscribe({
+    this.agentService.getTokenUsage().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         this.loading.set(false);
         const rows = res.rows ?? [];

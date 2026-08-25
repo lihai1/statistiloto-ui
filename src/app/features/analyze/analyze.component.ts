@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, Input, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, Input, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ApiService } from '../../core/api/api.service';
 import { AgentContextService } from '../../core/api/agent-context.service';
 import { LanguageService } from '../../core/i18n/language.service';
@@ -17,6 +18,7 @@ import {
   LotteryResultResponse,
   NumbersCategory,
 } from '../../shared/models/lottery.models';
+import { subscribeWithError } from '../../shared/utils/http-loading';
 import { AnalyzedGroup, groupBySize } from '../../shared/utils/arrays-filter';
 
 @Component({
@@ -194,6 +196,7 @@ export class AnalyzeComponent {
   protected lang = inject(LanguageService);
   private archive = inject(ArchiveWindowService);
   private agentContext = inject(AgentContextService);
+  private destroyRef = inject(DestroyRef);
 
   private readonly _selected = signal<number[]>([]);
   readonly selected = computed(() => this._selected());
@@ -273,14 +276,17 @@ export class AnalyzeComponent {
       return;
     }
 
-    this.toast.showLoading();
     const req: AnalyzeRequest = {
       form: formNums,
       from: this.archive.from(),
       to: this.archive.to(),
     };
 
-    this.api.analyze(req).subscribe({
+    subscribeWithError({
+      observable: this.api.analyze(req),
+      toast: this.toast,
+      lang: this.lang,
+      destroyRef: this.destroyRef,
       next: (res) => {
         this.result.set(res);
         const analyzed = groupBySize(res.frequencyGroups, 6, this.lang.lang());
@@ -290,11 +296,6 @@ export class AnalyzeComponent {
         const firstSize = firstWithEntries?.size ?? 1;
         this.currentTab.set(firstSize);
         this.expandedTabs.set(new Set([firstSize]));
-        this.toast.hideLoading();
-      },
-      error: (err) => {
-        this.toast.hideLoading();
-        this.toast.error(err.message ?? this.lang.t('common.connectionError'));
       },
     });
   }
@@ -310,7 +311,7 @@ export class AnalyzeComponent {
     this.api.saveNumbers({
       category: NumbersCategory.GROUP_CALCULATED,
       numbers: item.numbers,
-    }).subscribe({
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => this.toast.success(this.lang.t('saved.save')),
       error: (err) => this.toast.error(err.message ?? this.lang.t('common.connectionError')),
     });

@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, signal, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -99,6 +100,7 @@ export class AuditLogComponent implements OnInit {
   private agentService = inject(AgentService);
   private toast = inject(ToastService);
   protected lang = inject(LanguageService);
+  private destroyRef = inject(DestroyRef);
 
   allData = signal<AuditLogRow[]>([]);
   filteredData = signal<AuditLogRow[]>([]);
@@ -111,7 +113,7 @@ export class AuditLogComponent implements OnInit {
 
   load(): void {
     this.loading.set(true);
-    this.agentService.getAuditLog(50).subscribe({
+    this.agentService.getAuditLog(50).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         this.loading.set(false);
         const rows = res.rows ?? [];

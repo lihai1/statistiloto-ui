@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, signal, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AgentChatComponent } from '../../shared/components/agent-chat/agent-chat.component';
 import { AgentService, ChatSession } from '../../core/api/agent.service';
 import { LanguageService } from '../../core/i18n/language.service';
@@ -229,6 +230,7 @@ export class AssistantComponent implements OnInit {
   private agentService = inject(AgentService);
   private toast = inject(ToastService);
   protected lang = inject(LanguageService);
+  private destroyRef = inject(DestroyRef);
 
   activeSessionId = signal(this.agentService.generateSessionId());
   sessions = signal<ChatSession[]>([]);
@@ -240,7 +242,7 @@ export class AssistantComponent implements OnInit {
   }
 
   private loadSessionList(): void {
-    this.agentService.listSessions().subscribe({
+    this.agentService.listSessions().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         this.sessions.set(res.sessions);
         this.sessionLimit.set(res.limit);
@@ -260,7 +262,7 @@ export class AssistantComponent implements OnInit {
     if (session.session_id === this.activeSessionId() && this.preloadedMessages() !== null) return;
     this.activeSessionId.set(session.session_id);
     this.preloadedMessages.set(null); // clear until loaded
-    this.agentService.getSessionMessages(session.session_id).subscribe({
+    this.agentService.getSessionMessages(session.session_id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         const msgs = res.messages.map((m) => ({
           role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
@@ -278,7 +280,7 @@ export class AssistantComponent implements OnInit {
   deleteSession(session: ChatSession, event: Event): void {
     event.stopPropagation();
     if (!confirm(this.lang.t('assistant.deleteConfirm'))) return;
-    this.agentService.deleteSession(session.session_id).subscribe({
+    this.agentService.deleteSession(session.session_id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.sessions.update((list) => list.filter((s) => s.session_id !== session.session_id));
         if (session.session_id === this.activeSessionId()) this.newChat();
@@ -290,7 +292,7 @@ export class AssistantComponent implements OnInit {
 
   deleteAllSessions(): void {
     if (!confirm(this.lang.t('assistant.deleteAllConfirm'))) return;
-    this.agentService.deleteAllSessions().subscribe({
+    this.agentService.deleteAllSessions().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.sessions.set([]);
         this.newChat();

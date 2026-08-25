@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ApiService } from '../../core/api/api.service';
 import { LanguageService } from '../../core/i18n/language.service';
 import { ToastService } from '../../shared/components/toast/toast.service';
@@ -101,6 +102,7 @@ export class LuckyComponent {
   private api = inject(ApiService);
   private toast = inject(ToastService);
   protected lang = inject(LanguageService);
+  private destroyRef = inject(DestroyRef);
 
   private readonly _selected = signal<number[]>([]);
   readonly selected = computed(() => this._selected());
@@ -144,6 +146,7 @@ export class LuckyComponent {
 
     this.api
       .saveNumbers({ category: NumbersCategory.LUCKY, numbers })
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
           this.toast.success(this.lang.t('lucky.saved'));
@@ -155,7 +158,7 @@ export class LuckyComponent {
   }
 
   private loadSaved(): void {
-    this.api.getSavedNumbers().subscribe({
+    this.api.getSavedNumbers().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         const lucky = res
           .filter((s) => s.category === NumbersCategory.LUCKY)
@@ -168,7 +171,7 @@ export class LuckyComponent {
 
   protected onDelete(item: NumberSetItem): void {
     if (item.id == null) return;
-    this.api.deleteNumbers(item.id).subscribe({
+    this.api.deleteNumbers(item.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this._savedItems.update((list) => list.filter((s) => s.id !== item.id));
       },

@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ApiService } from '../../core/api/api.service';
 import { LanguageService } from '../../core/i18n/language.service';
 import { ToastService } from '../../shared/components/toast/toast.service';
@@ -113,6 +114,7 @@ export class SavedNumbersComponent {
   private api = inject(ApiService);
   private toast = inject(ToastService);
   protected lang = inject(LanguageService);
+  private destroyRef = inject(DestroyRef);
 
   loading = signal(false);
   error = signal<string | null>(null);
@@ -133,7 +135,7 @@ export class SavedNumbersComponent {
 
   load(): void {
     this.loading.set(true);
-    this.api.getSavedNumbers().subscribe({
+    this.api.getSavedNumbers().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         const forms = res
           .filter((s) => s.category === NumbersCategory.USER_GENERATED)
@@ -164,7 +166,7 @@ export class SavedNumbersComponent {
 
   onDelete(item: NumberSetItem): void {
     if (item.id == null) return;
-    this.api.deleteNumbers(item.id).subscribe({
+    this.api.deleteNumbers(item.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.forms.update((l) => l.filter((s) => s.id !== item.id));
         this.groups.update((l) => l.filter((s) => s.id !== item.id));

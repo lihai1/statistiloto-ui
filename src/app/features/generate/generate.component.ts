@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api/api.service';
 import { AgentContextService } from '../../core/api/agent-context.service';
@@ -12,6 +13,7 @@ import {
   NumberSetItem,
 } from '../../shared/components/number-set-list/number-set-list.component';
 import { AnalyzeModalComponent } from '../../shared/components/analyze-modal/analyze-modal.component';
+import { subscribeWithError } from '../../shared/utils/http-loading';
 import {
   GenerateFormRequest,
   LotteryResultResponse,
@@ -179,6 +181,7 @@ export class GenerateComponent {
   protected lang = inject(LanguageService);
   private archive = inject(ArchiveWindowService);
   private agentContext = inject(AgentContextService);
+  private destroyRef = inject(DestroyRef);
 
   formTypes = [6, 7, 8, 9, 10, 11, 12];
   formType = 6;
@@ -199,7 +202,7 @@ export class GenerateComponent {
   }
 
   private loadLuckySets() {
-    this.api.getSavedNumbers().subscribe({
+    this.api.getSavedNumbers().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         const lucky = res.filter((s) => s.category === NumbersCategory.LUCKY);
         this.luckySets.set(lucky);
@@ -212,7 +215,6 @@ export class GenerateComponent {
   }
 
   generate(): void {
-    this.toast.showLoading();
     const willBe = this.includeLucky
       ? this.luckySets().find((s) => s.id === this.selectedLuckyId)?.numbers ?? []
       : [];
@@ -226,7 +228,11 @@ export class GenerateComponent {
       strength: this.strength,
     };
 
-    this.api.generateForm(req).subscribe({
+    subscribeWithError({
+      observable: this.api.generateForm(req),
+      toast: this.toast,
+      lang: this.lang,
+      destroyRef: this.destroyRef,
       next: (res) => {
         this.result.set(res);
         this.formItems.set(
@@ -240,11 +246,6 @@ export class GenerateComponent {
             return { numbers };
           }),
         );
-        this.toast.hideLoading();
-      },
-      error: (err) => {
-        this.toast.hideLoading();
-        this.toast.error(err.message ?? this.lang.t('common.connectionError'));
       },
     });
   }
@@ -257,6 +258,7 @@ export class GenerateComponent {
         dateFrom: this.archive.from(),
         dateTo: this.archive.to(),
       })
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => this.toast.success(this.lang.t('lucky.saved')),
         error: (err) => this.toast.error(err.message ?? this.lang.t('common.error')),

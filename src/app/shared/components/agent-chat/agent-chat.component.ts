@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, ElementRef, Input, Output, EventEmitter, inject, signal, ViewChild, AfterViewChecked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Input, Output, EventEmitter, inject, signal, ViewChild, AfterViewChecked } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -194,6 +195,7 @@ export class AgentChatComponent implements AfterViewChecked {
   private agentService = inject(AgentService);
   private toast = inject(ToastService);
   protected lang = inject(LanguageService);
+  private destroyRef = inject(DestroyRef);
 
   private _sessionId = this.agentService.generateSessionId();
   @Input() set sessionId(value: string) {
@@ -259,7 +261,7 @@ export class AgentChatComponent implements AfterViewChecked {
       message: text,
       intent: this.intent ?? undefined,
       context: this.context ?? undefined,
-    }).subscribe({
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         this.loading.set(false);
         if (res.thread_id) this.currentThreadId = res.thread_id;
@@ -294,7 +296,7 @@ export class AgentChatComponent implements AfterViewChecked {
     this.agentService.approve({
       sessionId: this.sessionId,
       approved,
-    }).subscribe({
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         this.loading.set(false);
         // Remove the HITL card by replacing the paused message

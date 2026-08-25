@@ -5,6 +5,7 @@ import {
   ElementRef,
   EventEmitter,
   Input,
+  OnDestroy,
   Output,
   ViewChild,
   signal,
@@ -206,7 +207,7 @@ export interface NumberSetItem {
     }
   `],
 })
-export class NumberSetListComponent implements AfterViewInit {
+export class NumberSetListComponent implements AfterViewInit, OnDestroy {
   private readonly _pageSize = 10;
   private _items: NumberSetItem[] = [];
   private _loaded = signal(this._pageSize);
@@ -281,6 +282,13 @@ export class NumberSetListComponent implements AfterViewInit {
 
   ngAfterViewInit() {
     this.setupObserver();
+  }
+
+  ngOnDestroy(): void {
+    if (this._observer) {
+      this._observer.disconnect();
+      this._observer = undefined;
+    }
   }
 
   private setupObserver() {

@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   EventEmitter,
   Input,
   Output,
@@ -8,6 +9,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ApiService } from '../../../core/api/api.service';
 import { LanguageService } from '../../../core/i18n/language.service';
 import { ArchiveWindowService } from '../../services/archive-window.service';
@@ -181,6 +183,7 @@ export class AnalyzeModalComponent {
   private toast = inject(ToastService);
   protected lang = inject(LanguageService);
   private archive = inject(ArchiveWindowService);
+  private destroyRef = inject(DestroyRef);
 
   private _form = signal<number[]>([]);
   form = this._form.asReadonly();
@@ -235,7 +238,7 @@ export class AnalyzeModalComponent {
       to: this.archive.to(),
     };
 
-    this.api.analyze(req).subscribe({
+    this.api.analyze(req).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         this.result.set(res);
         const grouped = groupBySize(res.frequencyGroups, 6, this.lang.lang());
@@ -256,7 +259,7 @@ export class AnalyzeModalComponent {
     this.api.saveNumbers({
       category: NumbersCategory.GROUP_CALCULATED,
       numbers: item.numbers,
-    }).subscribe({
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => this.toast.success(this.lang.t('saved.save')),
       error: (err) => this.toast.error(err.message ?? this.lang.t('common.connectionError')),
     });
