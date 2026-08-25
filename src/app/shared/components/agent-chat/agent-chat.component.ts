@@ -212,6 +212,8 @@ export class AgentChatComponent implements AfterViewChecked {
   }
   @Input() intent: string | null = null;
   @Input() context: AgentChatContext | null = null;
+  /** Admin-only: override the active LLM config for this chat session. */
+  @Input() configId: number | null = null;
 
   /** Pre-loaded message history (from loading a past session). */
   @Input() set preloadedMessages(value: { role: 'user' | 'assistant'; content: string; timestamp: number }[] | null) {
@@ -261,6 +263,7 @@ export class AgentChatComponent implements AfterViewChecked {
       message: text,
       intent: this.intent ?? undefined,
       context: this.context ?? undefined,
+      configId: this.configId ?? undefined,
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         this.loading.set(false);

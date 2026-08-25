@@ -24,6 +24,7 @@ export interface AgentChatRequest {
   message: string;
   intent?: string;
   context?: AgentChatContext;
+  configId?: number;
 }
 
 export interface AgentApproveRequest {
@@ -122,9 +123,18 @@ export interface ChatSessionMessagesResponse {
   messages: { role: string; content: string; timestamp: number }[];
 }
 
+/** A single model entry returned by GET /llm-models. */
+export interface LlmModelOption {
+  name: string;
+  /** Model size in bytes (Ollama only; 0 when unknown). */
+  size: number;
+  /** Ollama-reported capabilities (e.g. 'embedding','vision','tools','thinking'). Empty for non-Ollama providers. */
+  capabilities: string[];
+}
+
 export interface LlmModelsResponse {
   provider: string;
-  models: string[];
+  models: LlmModelOption[];
 }
 
 export interface LlmConfigTestResponse {
@@ -163,6 +173,10 @@ export class AgentService {
     return this.http.post<{ status: string; id: number; name: string }>(`${this.base}/llm-configs`, req);
   }
 
+  updateStoredLlmConfig(configId: number, req: LlmConfigUpdate): Observable<{ status: string; id: number; name: string }> {
+    return this.http.put<{ status: string; id: number; name: string }>(`${this.base}/llm-configs/${configId}`, req);
+  }
+
   activateLlmConfig(configId: number): Observable<{ status: string; id: number }> {
     return this.http.put<{ status: string; id: number }>(`${this.base}/llm-configs/${configId}/activate`, {});
   }
@@ -187,8 +201,10 @@ export class AgentService {
     return this.http.post<ReindexResponse>(`${this.base}/reindex`, {});
   }
 
-  listLlmModels(provider: string): Observable<LlmModelsResponse> {
-    return this.http.get<LlmModelsResponse>(`${this.base}/llm-models?provider=${encodeURIComponent(provider)}`);
+  listLlmModels(provider: string, baseUrl?: string): Observable<LlmModelsResponse> {
+    let url = `${this.base}/llm-models?provider=${encodeURIComponent(provider)}`;
+    if (baseUrl) url += `&base_url=${encodeURIComponent(baseUrl)}`;
+    return this.http.get<LlmModelsResponse>(url);
   }
 
   testLlmConfig(configId: number): Observable<LlmConfigTestResponse> {

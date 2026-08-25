@@ -5,7 +5,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { CardModule } from 'primeng/card';
-import { AgentService, LlmConfigUpdate, LlmConfigRow, LlmConfigTestResponse } from '../../../core/api/agent.service';
+import { AgentService, LlmConfigUpdate, LlmConfigRow, LlmConfigTestResponse, LlmModelOption } from '../../../core/api/agent.service';
 import { LanguageService } from '../../../core/i18n/language.service';
 import { ToastService } from '../../../shared/components/toast/toast.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
@@ -57,6 +57,10 @@ interface ProviderMeta {
                           <i class="pi pi-check-circle"></i>
                         }
                         {{ 'admin.llmConfig.test' | translate }}
+                      </button>
+                      <button class="secondary small" (click)="editConfig(c)">
+                        <i class="pi pi-pencil"></i>
+                        {{ 'admin.llmConfig.edit' | translate }}
                       </button>
                       @if (!c.is_active) {
                         <button class="secondary small" (click)="activateConfig(c)">
@@ -130,7 +134,13 @@ interface ProviderMeta {
       <hr class="divider" />
 
       <!-- Create / edit form -->
-      <h4 class="section-title">{{ 'admin.llmConfig.createNew' | translate }}</h4>
+      <h4 class="section-title">
+        @if (editingId()) {
+          {{ 'admin.llmConfig.editConfig' | translate }}
+        } @else {
+          {{ 'admin.llmConfig.createNew' | translate }}
+        }
+      </h4>
       <div class="config-form">
         <div class="form-row">
           <label for="name">{{ 'admin.llmConfig.name' | translate }}</label>
@@ -156,10 +166,38 @@ interface ProviderMeta {
             <p-select
               inputId="model"
               [options]="availableModels()"
+              optionLabel="name"
+              optionValue="name"
               [(ngModel)]="config.model"
               [filter]="true"
+              [filterBy]="'name'"
               [placeholder]="'admin.llmConfig.selectModel' | translate"
-            ></p-select>
+            >
+              <!-- Dropdown item: model name + size + capability tags -->
+              <ng-template #item let-option>
+                <div class="model-option">
+                  <span class="model-option-name">{{ option.name }}</span>
+                  @if (formatSize(option.size)) {
+                    <span class="model-option-size">{{ formatSize(option.size) }}</span>
+                  }
+                  @for (tag of capabilityTags(option.capabilities); track tag) {
+                    <span class="cap-tag" [class]="'cap-tag-' + tag">{{ tagLabel(tag) | translate }}</span>
+                  }
+                </div>
+              </ng-template>
+              <!-- Selected value display -->
+              <ng-template #selectedItem let-option>
+                <div class="model-option">
+                  <span class="model-option-name">{{ option.name }}</span>
+                  @if (formatSize(option.size)) {
+                    <span class="model-option-size">{{ formatSize(option.size) }}</span>
+                  }
+                  @for (tag of capabilityTags(option.capabilities); track tag) {
+                    <span class="cap-tag" [class]="'cap-tag-' + tag">{{ tagLabel(tag) | translate }}</span>
+                  }
+                </div>
+              </ng-template>
+            </p-select>
             <small class="form-hint">{{ 'admin.llmConfig.modelsLoaded' | translate:{ count: availableModels().length } }}</small>
           } @else {
             <input pInputText id="model" type="text" [(ngModel)]="config.model"
@@ -203,18 +241,32 @@ interface ProviderMeta {
         </div>
 
         <div class="form-actions">
-          <p-button
-            [label]="'admin.llmConfig.saveAndActivate' | translate"
-            (onClick)="saveAndActivate()"
-            [loading]="saving()"
-            styleClass="mr-2"
-          ></p-button>
-          <p-button
-            [label]="'admin.llmConfig.saveOnly' | translate"
-            (onClick)="saveOnly()"
-            [loading]="saving()"
-            severity="secondary"
-          ></p-button>
+          @if (editingId()) {
+            <p-button
+              [label]="'admin.llmConfig.update' | translate"
+              (onClick)="updateConfig()"
+              [loading]="saving()"
+              styleClass="mr-2"
+            ></p-button>
+            <p-button
+              [label]="'admin.llmConfig.cancel' | translate"
+              (onClick)="cancelEdit()"
+              severity="secondary"
+            ></p-button>
+          } @else {
+            <p-button
+              [label]="'admin.llmConfig.saveAndActivate' | translate"
+              (onClick)="saveAndActivate()"
+              [loading]="saving()"
+              styleClass="mr-2"
+            ></p-button>
+            <p-button
+              [label]="'admin.llmConfig.saveOnly' | translate"
+              (onClick)="saveOnly()"
+              [loading]="saving()"
+              severity="secondary"
+            ></p-button>
+          }
         </div>
 
         @if (statusNote()) {
@@ -356,11 +408,12 @@ export class LlmConfigComponent implements OnInit {
   };
 
   configs = signal<LlmConfigRow[]>([]);
-  availableModels = signal<string[]>([]);
+  availableModels = signal<LlmModelOption[]>([]);
   loadingModels = signal(false);
   saving = signal(false);
   statusNote = signal<string | null>(null);
   expandedId = signal<number | null>(null);
+  editingId = signal<number | null>(null);
   testingId = signal<number | null>(null);
   testResult = signal<LlmConfigTestResponse | null>(null);
 
@@ -395,15 +448,14 @@ export class LlmConfigComponent implements OnInit {
     // Clear the model and fetch models for the new provider.
     this.config.model = '';
     this.availableModels.set([]);
-    // Set the known base URL as default for non-Ollama providers.
+    // Reset base URL to the provider's default on provider switch.
+    // This ensures switching from Gemini (https://...) to Ollama doesn't
+    // leave the Ollama fetch pointing at the wrong server.
     const meta = this.currentProviderMeta();
-    if (meta && !meta.showsBaseUrl && meta.defaultBaseUrl) {
+    if (meta && meta.defaultBaseUrl) {
       this.config.baseUrl = meta.defaultBaseUrl;
-    } else if (meta && meta.showsBaseUrl && meta.defaultBaseUrl) {
-      // For Ollama, set the default if empty.
-      if (!this.config.baseUrl) this.config.baseUrl = meta.defaultBaseUrl;
     }
-    // Clear API key when switching to Ollama.
+    // Clear API key when switching to a provider that doesn't need one.
     if (meta && !meta.needsApiKey) {
       this.config.apiKey = '';
     }
@@ -412,7 +464,11 @@ export class LlmConfigComponent implements OnInit {
 
   fetchModels(): void {
     this.loadingModels.set(true);
-    this.agentService.listLlmModels(this.config.provider).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    // For Ollama, pass the base URL from the form so the agent queries the
+    // correct server even when a non-Ollama config is currently active.
+    const meta = this.currentProviderMeta();
+    const baseUrl = meta?.showsBaseUrl ? this.config.baseUrl : undefined;
+    this.agentService.listLlmModels(this.config.provider, baseUrl).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         this.availableModels.set(res.models);
         this.loadingModels.set(false);
@@ -493,6 +549,60 @@ export class LlmConfigComponent implements OnInit {
     });
   }
 
+  editConfig(c: LlmConfigRow): void {
+    // Load the config into the form for editing.
+    this.editingId.set(c.id);
+    this.config.provider = c.provider;
+    this.config.model = c.model;
+    this.config.name = c.name;
+    this.config.baseUrl = c.base_url;
+    this.config.apiKey = c.api_key;
+    this.config.requestTimeoutSeconds = c.request_timeout_seconds;
+    this.statusNote.set(null);
+    this.fetchModels();
+    this.cdr.markForCheck();
+  }
+
+  cancelEdit(): void {
+    this.editingId.set(null);
+    this.statusNote.set(null);
+    // Reset the form to defaults.
+    this.config = {
+      provider: 'ollama',
+      model: '',
+      name: '',
+      baseUrl: '',
+      apiKey: '',
+      requestTimeoutSeconds: 300,
+    };
+    this.availableModels.set([]);
+    this.cdr.markForCheck();
+  }
+
+  updateConfig(): void {
+    const id = this.editingId();
+    if (!id) return;
+    if (!this.config.model.trim()) {
+      this.toast.error(this.lang.t('admin.llmConfig.typeModel'));
+      return;
+    }
+    this.saving.set(true);
+    this.agentService.updateStoredLlmConfig(id, this.config).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res) => {
+        this.saving.set(false);
+        this.statusNote.set(this.lang.t('admin.llmConfig.updated'));
+        this.toast.success(this.lang.t('admin.llmConfig.updated'));
+        this.editingId.set(null);
+        this.loadConfigs();
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.toast.error(err.message ?? this.lang.t('common.error'));
+      },
+    });
+  }
+
   testConfig(c: LlmConfigRow): void {
     this.testingId.set(c.id);
     this.testResult.set(null);
@@ -526,5 +636,39 @@ export class LlmConfigComponent implements OnInit {
     if (!key) return '—';
     if (key.length <= 8) return '••••';
     return key.slice(0, 4) + '••••••••' + key.slice(-4);
+  }
+
+  /** Formats a model size in bytes as a human-readable string (e.g. "4.7 GB"). Returns '' for 0/unknown. */
+  formatSize(bytes: number | undefined): string {
+    if (!bytes || bytes <= 0) return '';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let i = 0;
+    let v = bytes;
+    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+    // Drop trailing 0 for GB+ (e.g. "4.7 GB"), keep one decimal.
+    return `${v >= 100 ? Math.round(v) : v.toFixed(1)} ${units[i]}`;
+  }
+
+  /** Ollama capability keys we surface as tags, in display order. */
+  private static readonly CAPABILITY_KEYS = ['embedding', 'vision', 'tools', 'thinking'] as const;
+  /** Maps Ollama capability strings to their i18n key suffix. */
+  private static readonly CAPABILITY_KEY_MAP: Record<string, string> = {
+    embedding: 'embedding',
+    vision: 'vision',
+    tools: 'tools',
+    thinking: 'thinking',
+  };
+
+  /** Returns the ordered list of supported capability keys present in `caps`. */
+  capabilityTags(caps: string[] | undefined): string[] {
+    if (!caps) return [];
+    const set = new Set(caps.map(c => c.toLowerCase()));
+    return LlmConfigComponent.CAPABILITY_KEYS.filter(k => set.has(k));
+  }
+
+  /** Returns the i18n key for a capability tag. */
+  tagLabel(tag: string): string {
+    const suffix = LlmConfigComponent.CAPABILITY_KEY_MAP[tag] ?? tag;
+    return `admin.llmConfig.cap.${suffix}`;
   }
 }

@@ -368,3 +368,17 @@ button.secondary {
 }
 
 /* Hamburger menu-toggle is always visible — user can collapse/expand sidebar on any screen size */
+
+/* ── LLM model capability tags (admin llm-config) ────────────── */
+.model-option { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.model-option-name { flex: 1; }
+.model-option-size { font-size: 11px; color: var(--text-secondary); opacity: 0.6; }
+.cap-tag {
+  font-size: 10px; font-weight: 600; line-height: 1;
+  padding: 3px 6px; border-radius: 10px; white-space: nowrap;
+  border: 1px solid transparent;
+}
+.cap-tag-embedding { background: rgba(126, 87, 194, 0.12); color: #7e57c2; border-color: rgba(126, 87, 194, 0.3); }
+.cap-tag-vision    { background: rgba(25, 118, 210, 0.12); color: #1976d2; border-color: rgba(25, 118, 210, 0.3); }
+.cap-tag-tools     { background: rgba(0, 121, 107, 0.12); color: #00796b; border-color: rgba(0, 121, 107, 0.3); }
+.cap-tag-thinking  { background: rgba(245, 124, 0, 0.12); color: #f57c00; border-color: rgba(245, 124, 0, 0.3); }

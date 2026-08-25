@@ -15,6 +15,7 @@ describe('LlmConfigComponent', () => {
       'listLlmConfigs',
       'listLlmModels',
       'createLlmConfig',
+      'updateStoredLlmConfig',
       'activateLlmConfig',
       'deleteLlmConfig',
       'testLlmConfig',
@@ -25,8 +26,15 @@ describe('LlmConfigComponent', () => {
       of({ provider: 'ollama', model: 'llama3.1:8b', status: 'ok', note: 'Saved' } as LlmConfigUpdateResponse),
     );
     mockAgentService.listLlmConfigs.and.returnValue(of({ configs: [] }));
-    mockAgentService.listLlmModels.and.returnValue(of({ provider: 'ollama', models: ['llama3.1:8b'] }));
+    mockAgentService.listLlmModels.and.returnValue(of({
+      provider: 'ollama',
+      models: [
+        { name: 'llama3.1:8b', size: 4661214619, capabilities: ['completion', 'tools'] },
+        { name: 'nomic-embed-text', size: 273268736, capabilities: ['embedding'] },
+      ],
+    }));
     mockAgentService.createLlmConfig.and.returnValue(of({ status: 'created', id: 1, name: 'Test' }));
+    mockAgentService.updateStoredLlmConfig.and.returnValue(of({ status: 'updated', id: 1, name: 'Test' }));
     mockAgentService.testLlmConfig.and.returnValue(of({ status: 'ok', id: 1, response: 'pong' }));
     mockAgentService.generateSessionId.and.returnValue('session-llm-1');
 
@@ -80,6 +88,34 @@ describe('LlmConfigComponent', () => {
     expect(meta?.defaultBaseUrl).toBe('https://api.anthropic.com');
   });
 
+  it('fetchModels should pass base_url for Ollama provider', () => {
+    component.config.provider = 'ollama';
+    component.config.baseUrl = 'http://my-ollama:11434';
+    mockAgentService.listLlmModels.calls.reset();
+    component.fetchModels();
+    expect(mockAgentService.listLlmModels.calls.mostRecent().args[0]).toBe('ollama');
+    expect(mockAgentService.listLlmModels.calls.mostRecent().args[1]).toBe('http://my-ollama:11434');
+  });
+
+  it('fetchModels should not pass base_url for non-Ollama providers', () => {
+    component.config.provider = 'gemini';
+    component.config.baseUrl = 'https://generativelanguage.googleapis.com';
+    mockAgentService.listLlmModels.calls.reset();
+    component.fetchModels();
+    expect(mockAgentService.listLlmModels.calls.mostRecent().args[0]).toBe('gemini');
+    expect(mockAgentService.listLlmModels.calls.mostRecent().args[1]).toBeUndefined();
+  });
+
+  it('onProviderChange should reset baseUrl to provider default', () => {
+    // Start with Gemini's base URL
+    component.config.provider = 'gemini';
+    component.config.baseUrl = 'https://generativelanguage.googleapis.com';
+    // Switch to Ollama
+    component.config.provider = 'ollama';
+    component.onProviderChange();
+    expect(component.config.baseUrl).toBe('http://ollama:11434');
+  });
+
   it('saveAndActivate() should call AgentService.updateLlmConfig()', () => {
     component.saveAndActivate();
 
@@ -113,5 +149,88 @@ describe('LlmConfigComponent', () => {
     expect(component.maskApiKey('sk-abcdefgh12345678')).toContain('••••');
     expect(component.maskApiKey('sk-abcdefgh12345678')).toContain('sk-a');
     expect(component.maskApiKey('sk-abcdefgh12345678')).toContain('5678');
+  });
+
+  it('availableModels should hold model options with size and capabilities after fetch', () => {
+    expect(component.availableModels().length).toBe(2);
+    expect(component.availableModels()[0]).toEqual({ name: 'llama3.1:8b', size: 4661214619, capabilities: ['completion', 'tools'] });
+  });
+
+  it('capabilityTags should return supported capabilities in canonical order', () => {
+    expect(component.capabilityTags(['completion', 'tools'])).toEqual(['tools']);
+    expect(component.capabilityTags(['thinking', 'vision', 'tools', 'embedding'])).toEqual(['embedding', 'vision', 'tools', 'thinking']);
+    // case-insensitive
+    expect(component.capabilityTags(['VISION'])).toEqual(['vision']);
+  });
+
+  it('capabilityTags should ignore unsupported capabilities', () => {
+    expect(component.capabilityTags(['completion', 'insert'])).toEqual([]);
+  });
+
+  it('capabilityTags should handle undefined / empty', () => {
+    expect(component.capabilityTags(undefined)).toEqual([]);
+    expect(component.capabilityTags([])).toEqual([]);
+  });
+
+  it('tagLabel should return the i18n key for a capability', () => {
+    expect(component.tagLabel('embedding')).toBe('admin.llmConfig.cap.embedding');
+    expect(component.tagLabel('vision')).toBe('admin.llmConfig.cap.vision');
+    expect(component.tagLabel('tools')).toBe('admin.llmConfig.cap.tools');
+    expect(component.tagLabel('thinking')).toBe('admin.llmConfig.cap.thinking');
+  });
+
+  it('formatSize should format bytes human-readably', () => {
+    expect(component.formatSize(0)).toBe('');
+    expect(component.formatSize(undefined)).toBe('');
+    expect(component.formatSize(500)).toBe('500 B');
+    expect(component.formatSize(273268736)).toBe('261 MB');
+    expect(component.formatSize(4661214619)).toBe('4.3 GB');
+  });
+
+  it('editConfig should load config into form and set editingId', () => {
+    const row = {
+      id: 42, name: 'My Ollama', provider: 'ollama', model: 'qwen3:8b',
+      base_url: 'http://ollama:11434', api_key: '', request_timeout_seconds: 120,
+      is_active: false, updated_at: 1700000000,
+    } as any;
+    component.editConfig(row);
+    expect(component.editingId()).toBe(42);
+    expect(component.config.provider).toBe('ollama');
+    expect(component.config.model).toBe('qwen3:8b');
+    expect(component.config.name).toBe('My Ollama');
+    expect(component.config.baseUrl).toBe('http://ollama:11434');
+    expect(component.config.requestTimeoutSeconds).toBe(120);
+  });
+
+  it('cancelEdit should reset editingId and form', () => {
+    component.editingId.set(42);
+    component.config.provider = 'gemini';
+    component.cancelEdit();
+    expect(component.editingId()).toBeNull();
+    expect(component.config.provider).toBe('ollama');
+    expect(component.config.model).toBe('');
+  });
+
+  it('updateConfig should call updateStoredLlmConfig and clear editingId on success', () => {
+    component.editingId.set(5);
+    component.config.model = 'qwen3:8b';
+    component.updateConfig();
+    expect(mockAgentService.updateStoredLlmConfig).toHaveBeenCalledTimes(1);
+    expect(mockAgentService.updateStoredLlmConfig.calls.mostRecent().args[0]).toBe(5);
+    expect(component.editingId()).toBeNull();
+    expect(component.saving()).toBe(false);
+  });
+
+  it('updateConfig should not call service when not editing', () => {
+    component.editingId.set(null);
+    component.updateConfig();
+    expect(mockAgentService.updateStoredLlmConfig).not.toHaveBeenCalled();
+  });
+
+  it('updateConfig should show error toast when model is empty', () => {
+    component.editingId.set(5);
+    component.config.model = '';
+    component.updateConfig();
+    expect(mockAgentService.updateStoredLlmConfig).not.toHaveBeenCalled();
   });
 });

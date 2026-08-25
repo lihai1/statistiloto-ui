@@ -1,23 +1,64 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal, OnInit, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
+import { SelectModule } from 'primeng/select';
 import { AgentChatComponent } from '../../shared/components/agent-chat/agent-chat.component';
-import { AgentService, ChatSession } from '../../core/api/agent.service';
+import { AgentService, ChatSession, LlmConfigRow } from '../../core/api/agent.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { LanguageService } from '../../core/i18n/language.service';
 import { ToastService } from '../../shared/components/toast/toast.service';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
+interface LlmConfigOption {
+  label: string;
+  value: number;
+  model: string;
+  configName: string;
+}
+
+interface LlmConfigOptionGroup {
+  label: string;
+  items: LlmConfigOption[];
+}
+
 @Component({
   selector: 'app-assistant',
   standalone: true,
-  imports: [AgentChatComponent, TranslatePipe],
+  imports: [AgentChatComponent, TranslatePipe, FormsModule, SelectModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="assistant-page">
       <div class="assistant-header">
         <h2>{{ 'assistant.title' | translate }}</h2>
-        <button class="new-chat-btn" (click)="newChat()">
-          <i class="pi pi-plus"></i> {{ 'assistant.newChat' | translate }}
-        </button>
+        <div class="header-actions">
+          @if (isAdmin()) {
+            <p-select
+              inputId="llm-config-select"
+              [options]="llmConfigOptions()"
+              optionLabel="label"
+              optionValue="value"
+              [group]="true"
+              [(ngModel)]="selectedConfigId"
+              [placeholder]="'assistant.selectModel' | translate"
+              styleClass="llm-config-select"
+            >
+              <ng-template #group let-group>
+                <span class="config-group-label">{{ group.label }}</span>
+              </ng-template>
+              <ng-template #item let-option>
+                <div class="config-option">
+                  <span class="config-option-model">{{ option.model }}</span>
+                  @if (option.configName) {
+                    <span class="config-option-name">{{ option.configName }}</span>
+                  }
+                </div>
+              </ng-template>
+            </p-select>
+          }
+          <button class="new-chat-btn" (click)="newChat()">
+            <i class="pi pi-plus"></i> {{ 'assistant.newChat' | translate }}
+          </button>
+        </div>
       </div>
 
       <div class="assistant-body">
@@ -66,6 +107,7 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
           <app-agent-chat
             [sessionId]="activeSessionId()"
             [preloadedMessages]="preloadedMessages()"
+            [configId]="selectedConfigId"
             (messageSent)="onMessageSent()"
           />
         </div>
@@ -88,6 +130,30 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
       margin: 0;
       font-size: 22px;
       color: var(--primary);
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .config-group-label {
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: capitalize;
+      color: var(--text-secondary);
+    }
+    .config-option {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .config-option-model {
+      font-size: 14px;
+      color: var(--text);
+    }
+    .config-option-name {
+      font-size: 11px;
+      color: var(--text-secondary);
     }
     .new-chat-btn {
       display: flex;
@@ -228,17 +294,55 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 })
 export class AssistantComponent implements OnInit {
   private agentService = inject(AgentService);
+  private authService = inject(AuthService);
   private toast = inject(ToastService);
   protected lang = inject(LanguageService);
   private destroyRef = inject(DestroyRef);
 
+  isAdmin = this.authService.isAdmin;
   activeSessionId = signal(this.agentService.generateSessionId());
   sessions = signal<ChatSession[]>([]);
   sessionLimit = signal<number | null>(null);
   preloadedMessages = signal<{ role: 'user' | 'assistant'; content: string; timestamp: number }[] | null>(null);
 
+  // Admin LLM config selector
+  private llmConfigs = signal<LlmConfigRow[]>([]);
+  selectedConfigId: number | null = null;
+  llmConfigOptions = computed<LlmConfigOptionGroup[]>(() => {
+    const configs = this.llmConfigs();
+    // Build grouped options: { label: provider, items: [{label, value, ...}] }
+    // ordered by provider, then by config name within each provider.
+    const byProvider = new Map<string, LlmConfigOption[]>();
+    for (const c of configs) {
+      const provider = c.provider;
+      if (!byProvider.has(provider)) byProvider.set(provider, []);
+      const configName = c.name || '';
+      const label = configName || `${c.provider}/${c.model}`;
+      byProvider.get(provider)!.push({
+        label,
+        value: c.id,
+        model: c.model,
+        configName,
+      });
+    }
+    const groups: LlmConfigOptionGroup[] = [];
+    for (const [provider, opts] of [...byProvider.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+      groups.push({
+        label: provider,
+        items: opts.sort((a, b) => a.label.localeCompare(b.label)),
+      });
+    }
+    return groups;
+  });
+
   ngOnInit(): void {
     this.loadSessionList();
+    if (this.isAdmin()) {
+      this.agentService.listLlmConfigs().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: (res) => this.llmConfigs.set(res.configs),
+        error: () => {}, // silently ignore — admin endpoint may not be available
+      });
+    }
   }
 
   private loadSessionList(): void {
