@@ -43,6 +43,15 @@ export const routes: Routes = [
     title: 'Analyze',
   },
   {
+    path: 'simulate',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/simulate/simulate.component').then(
+        (m) => m.SimulateComponent,
+      ),
+    title: 'Simulate',
+  },
+  {
     path: 'saved',
     canActivate: [authGuard],
     loadComponent: () =>

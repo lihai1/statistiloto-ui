@@ -76,3 +76,73 @@ export interface UserProfileResponse {
   displayName: string;
   roles: string[];
 }
+
+// ── Simulate (backtest) ─────────────────────────────────────────
+
+export interface SimulateRequest {
+  form: number[];
+  strong: number;
+  from?: string;
+  to?: string;
+  ticketCost?: number;
+  prizeAmounts?: number[];
+}
+
+export interface SimulateTierHitResponse {
+  tier: number;
+  hits: number;
+  amountPerHit: number;
+  total: number;
+}
+
+export interface SimulateDrawResultResponse {
+  drawNumber: number;
+  drawDate: string;
+  winningNumbers: number[];
+  winningStrong: number;
+  tierHits: SimulateTierHitResponse[];
+  prizeWon: number;
+  ticketCost: number;
+  usedRealPrizes: boolean;
+}
+
+export interface SimulateTierSummaryResponse {
+  tier: number;
+  label: string;
+  totalHits: number;
+  totalAmount: number;
+}
+
+export interface SimulateSummaryResponse {
+  totalDraws: number;
+  totalCombinations: number;
+  totalSpent: number;
+  totalWon: number;
+  net: number;
+  tierSummaries: SimulateTierSummaryResponse[];
+  drawsWithRealPrizes: number;
+}
+
+export interface SimulateResultResponse {
+  draws: SimulateDrawResultResponse[];
+  summary: SimulateSummaryResponse;
+}
+
+// Default prize amounts per tier (ILS) — Israeli Lotto.
+// Tier 1 (6+strong) through Tier 8 (3 matches).
+export const DEFAULT_PRIZE_AMOUNTS: number[] = [
+  5_000_000, // tier 1: 6 + strong (jackpot minimum)
+  750_000,   // tier 2: 6 (second prize minimum)
+  10_000,    // tier 3: 5 + strong
+  2_000,     // tier 4: 5
+  500,       // tier 5: 4 + strong
+  150,       // tier 6: 4
+  75,        // tier 7: 3 + strong
+  15,        // tier 8: 3
+];
+
+export const TIER_LABELS: string[] = [
+  '6+strong', '6', '5+strong', '5', '4+strong', '4', '3+strong', '3',
+];
+
+export const DEFAULT_TICKET_COST = 3.0;

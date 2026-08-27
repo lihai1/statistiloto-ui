@@ -25,6 +25,7 @@ export interface AgentChatRequest {
   intent?: string;
   context?: AgentChatContext;
   configId?: number;
+  lang?: string;
 }
 
 export interface AgentApproveRequest {
@@ -85,6 +86,7 @@ export interface AgentMessage {
 
 export interface TokenUsageRow {
   user_sub: string;
+  user_email?: string;
   tier: string;
   provider: string;
   model: string;
@@ -96,6 +98,7 @@ export interface TokenUsageRow {
 
 export interface AuditLogRow {
   user_sub: string;
+  user_email?: string;
   tier: string;
   action: string;
   details: any;
@@ -142,6 +145,11 @@ export interface LlmConfigTestResponse {
   id: number;
   response?: string;
   error?: string;
+}
+
+export interface FreeLlmToggleResponse {
+  enabled: boolean;
+  updated_by?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -209,6 +217,14 @@ export class AgentService {
 
   testLlmConfig(configId: number): Observable<LlmConfigTestResponse> {
     return this.http.post<LlmConfigTestResponse>(`${this.base}/llm-configs/${configId}/test`, {});
+  }
+
+  getFreeLlmToggle(): Observable<FreeLlmToggleResponse> {
+    return this.http.get<FreeLlmToggleResponse>(`${this.base}/free-llm`);
+  }
+
+  setFreeLlmToggle(enabled: boolean): Observable<FreeLlmToggleResponse> {
+    return this.http.put<FreeLlmToggleResponse>(`${this.base}/free-llm`, { enabled });
   }
 
   listSessions(): Observable<ChatSessionListResponse> {

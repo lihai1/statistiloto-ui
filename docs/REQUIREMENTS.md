@@ -40,6 +40,20 @@ Derived from the actual codebase (`package.json`, `angular.json`,
   front-loaded as willBe into the generation request. Results can be
   saved or analyzed via modal.
 
+- **FR-5a** **Simulate** (`/simulate`, auth required) — backtest a ticket
+  against every historical draw in an archive window. Controls: a
+  "load saved numbers" tray listing previously saved sets, archive date
+  range (`ArchiveWindowComponent`), form size selector (6/8/10/12 for
+  systematic forms), ticket cost (₪), a 37-ball picker (`LotteryBallComponent`),
+  a strong-number picker (1–7), and a collapsible prize-amounts panel
+  (per-tier ILS overrides, length 0 or 8). The "run simulation" button is
+  disabled until enough numbers are selected. Results render summary cards
+  (total draws, total spent, total won, net, draws with real prizes), a
+  per-tier hit-count table, and a draw-by-draw history table with
+  winning numbers, strong number, tier hit, prize, cost, and a
+  real-vs-estimate prize-source badge. Calls
+  `POST /api/generate/simulate` via `ApiService.simulate()`.
+
 - **FR-6** **Saved Numbers** (`/saved`, auth required) — CRUD saved number
   sets per authenticated user. Groups saved sets by category (forms vs
   lucky) with count badges. Shows loading, error, and empty states. Each
@@ -56,10 +70,12 @@ Derived from the actual codebase (`package.json`, `angular.json`,
   — manage LLM configurations at runtime. Edit the active config (provider
   select ollama/gemini/mock, model name, base URL, API key, request timeout)
   via `GET /api/agent/llm-config` and `PUT /api/agent/llm-config`. List, create,
-  activate, delete, and smoke-test stored configurations via
-  `GET/POST /api/agent/llm-configs`, `PUT /api/agent/llm-configs/{id}/activate`,
+  update, activate, delete, and smoke-test stored configurations via
+  `GET/POST /api/agent/llm-configs`, `PUT /api/agent/llm-configs/{id}`
+  (update), `PUT /api/agent/llm-configs/{id}/activate`,
   `POST /api/agent/llm-configs/{id}/test`, `DELETE /api/agent/llm-configs/{id}`.
-  Fetch available models per provider via `GET /api/agent/llm-models?provider=...`.
+  Fetch available models per provider via `GET /api/agent/llm-models?provider=...&base_url=...`.
+  Toggle free-tier LLM access via `GET/PUT /api/agent/free-llm`.
   Uses PrimeNG `p-select`, `p-inputtext`, `p-button`, `p-card`.
 
 - **FR-9** **Admin — Scraper** (`/admin/scraper`, auth + admin role) —
@@ -170,13 +186,17 @@ Derived from the actual codebase (`package.json`, `angular.json`,
 - **API-1** The UI talks ONLY to the Java BFF at `/api/*` through Traefik.
 - **API-2** The UI NEVER calls the Go lottery service directly.
 - **API-3** `ApiService` wraps `HttpClient` for all lottery endpoints
-  (`/api/generate/form`, `/api/generate/statistics`, `/api/generate/analyze`).
-- **API-4** `AgentService` handles SSE streaming for `/api/agent/chat` and
+  (`/api/generate/form`, `/api/generate/statistics`, `/api/generate/analyze`,
+  `/api/generate/simulate`).
+- **API-4** `AgentService` handles SSE streaming for `/api/agent/chat` (with
+  optional `config_id` and `lang` params) and
   POST for `/api/agent/approve`. It also wraps the admin/telemetry surface:
   LLM config (`GET/PUT /api/agent/llm-config`), stored LLM configs
-  (`GET/POST /api/agent/llm-configs`, `PUT .../{id}/activate`,
-  `POST .../{id}/test`, `DELETE .../{id}`), model listing
-  (`GET /api/agent/llm-models`), token usage (`GET /api/agent/token-usage`),
+  (`GET/POST /api/agent/llm-configs`, `PUT .../{id}` (update),
+  `PUT .../{id}/activate`, `POST .../{id}/test`, `DELETE .../{id}`),
+  model listing (`GET /api/agent/llm-models` with optional `base_url`),
+  free-tier LLM toggle (`GET/PUT /api/agent/free-llm`),
+  token usage (`GET /api/agent/token-usage`),
   audit log (`GET /api/agent/audit-log`), RAG reindex (`POST /api/agent/reindex`),
   health (`GET /api/agent/health`), and chat session CRUD
   (`GET/DELETE /api/agent/sessions`, `GET/DELETE /api/agent/sessions/{id}`).
@@ -191,7 +211,7 @@ Derived from the actual codebase (`package.json`, `angular.json`,
 
 - **TEST-1** Unit tests with Karma + Jasmine (co-located `.spec.ts` files).
 - **TEST-2** E2E tests with Playwright (`e2e/full-flow.spec.ts`,
-  `e2e/admin-agent.spec.ts`).
+  `e2e/admin-agent.spec.ts`, `e2e/simulate.spec.ts`).
 - **TEST-3** E2E tests run against the full stack via Traefik (base URL:
   `http://localhost`).
 - **TEST-4** Test environment supports auto-creating test users via Keycloak

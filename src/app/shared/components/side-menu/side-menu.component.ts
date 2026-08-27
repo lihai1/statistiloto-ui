@@ -55,6 +55,7 @@ import { ArchiveWindowComponent } from '../archive-window/archive-window.compone
         <a routerLink="/lucky" routerLinkActive="active-link">{{ 'nav.lucky' | translate }}</a>
         <a routerLink="/statistics" routerLinkActive="active-link">{{ 'nav.statistics' | translate }}</a>
         <a routerLink="/analyze" routerLinkActive="active-link">{{ 'nav.analyze' | translate }}</a>
+        <a routerLink="/simulate" routerLinkActive="active-link">{{ 'nav.simulate' | translate }}</a>
         <a routerLink="/saved" routerLinkActive="active-link">{{ 'nav.saved' | translate }}</a>
       </nav>
 

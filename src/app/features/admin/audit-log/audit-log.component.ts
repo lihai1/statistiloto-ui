@@ -12,7 +12,7 @@ import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 import { DatePipe } from '@angular/common';
 
 interface AuditLogRow {
-  userSub: string;
+  userEmail: string;
   tier: string;
   action: string;
   details: string;
@@ -50,7 +50,7 @@ interface AuditLogRow {
         </ng-template>
         <ng-template #body let-row>
           <tr>
-            <td>{{ row.userSub }}</td>
+            <td>{{ row.userEmail }}</td>
             <td><span class="tier-badge tier-{{ row.tier }}">{{ row.tier }}</span></td>
             <td>{{ row.action }}</td>
             <td class="details-cell">{{ row.details }}</td>
@@ -118,7 +118,7 @@ export class AuditLogComponent implements OnInit {
         this.loading.set(false);
         const rows = res.rows ?? [];
         this.allData.set(rows.map((r) => ({
-          userSub: r.user_sub ?? '',
+          userEmail: r.user_email ?? r.user_sub ?? '',
           tier: r.tier ?? 'free',
           action: r.action ?? '',
           details: typeof r.details === 'string' ? r.details : JSON.stringify(r.details ?? {}),
@@ -141,7 +141,7 @@ export class AuditLogComponent implements OnInit {
     }
     this.filteredData.set(
       this.allData().filter(r =>
-        r.userSub.toLowerCase().includes(search) ||
+        r.userEmail.toLowerCase().includes(search) ||
         r.action.toLowerCase().includes(search) ||
         r.details.toLowerCase().includes(search)
       )

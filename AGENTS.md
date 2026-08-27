@@ -30,13 +30,13 @@ Do NOT run `npm install` without `--legacy-peer-deps` — it will fail.
 - `core/` — infra services: auth, api, interceptors, i18n, theme, service-worker.
   - `auth/auth.service.ts` — Keycloak wrapper; signals `isAuthenticated`, `username`, `isAdmin`.
   - `auth/auth.guard.ts` — `authGuard` (CanActivateFn), redirects to Keycloak login.
-  - `api/api.service.ts` — lottery endpoints (generate, statistics, analyze, saved, profile).
-  - `api/agent.service.ts` — agent chat/approve, LLM config (active GET/PUT + stored configs CRUD/test/activate), llm-models, token-usage, audit-log, scraper, sessions CRUD, reindex.
+  - `api/api.service.ts` — lottery endpoints (generate, statistics, analyze, simulate, saved, profile).
+  - `api/agent.service.ts` — agent chat/approve, LLM config (active GET/PUT + stored configs CRUD/test/activate), llm-models, free-llm toggle (admin GET/PUT), token-usage, audit-log, scraper, sessions CRUD, reindex.
   - `interceptors/auth.interceptor.ts` — attaches Bearer token, refreshes with 30s skew.
   - `interceptors/error.interceptor.ts` — logs 401/429.
   - `i18n/`, `theme/`, `sw-register.ts`.
 - `features/` — page components (one folder per route): home, generate, lucky, statistics,
-  analyze, saved-numbers, assistant, admin.
+  analyze, simulate, saved-numbers, assistant, admin.
   - `features/admin/` has child routes: llm-config, token-usage, audit-log, scraper.
 - `shared/` — components, models, pipes, services, utilities.
 
@@ -47,7 +47,7 @@ All routes use `loadComponent()` (lazy standalone). Guarded by `authGuard`.
 | Path | Auth | Notes |
 |------|------|-------|
 | `/` | no | home |
-| `/generate` `/lucky` `/statistics` `/analyze` `/saved` `/assistant` | USER | |
+| `/generate` `/lucky` `/statistics` `/analyze` `/simulate` `/saved` `/assistant` | USER | |
 | `/admin` + children (`/admin/llm-config`, `/admin/token-usage`, `/admin/audit-log`, `/admin/scraper`) | ADMIN | |
 
 ## State

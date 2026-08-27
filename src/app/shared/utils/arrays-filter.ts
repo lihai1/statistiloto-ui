@@ -65,7 +65,7 @@ export function groupBySize(
       count: e.count,
     }));
     const total = entries.reduce((sum, e) => sum + e.count, 0);
-    const combos = apiGroup?.combos ?? combinations(37, size);
+    const combos = apiGroup?.combos || combinations(37, size);
     const ratio = combos > 0 ? (total / combos).toFixed(3) : '0.000';
 
     groups.push({

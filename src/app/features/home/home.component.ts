@@ -24,6 +24,7 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
           <a routerLink="/lucky" class="action-link">{{ 'home.action.lucky' | translate }}</a>
           <a routerLink="/statistics" class="action-link">{{ 'home.action.statistics' | translate }}</a>
           <a routerLink="/analyze" class="action-link">{{ 'home.action.analyze' | translate }}</a>
+          <a routerLink="/simulate" class="action-link">{{ 'home.action.simulate' | translate }}</a>
           <a routerLink="/saved" class="action-link">{{ 'home.action.saved' | translate }}</a>
           <a routerLink="/assistant" class="action-link ai-cta">
             <i class="pi pi-comments"></i> {{ 'home.action.assistant' | translate }}

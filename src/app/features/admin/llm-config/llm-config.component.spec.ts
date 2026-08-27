@@ -19,6 +19,8 @@ describe('LlmConfigComponent', () => {
       'activateLlmConfig',
       'deleteLlmConfig',
       'testLlmConfig',
+      'getFreeLlmToggle',
+      'setFreeLlmToggle',
       'generateSessionId',
     ]);
     mockAgentService.getLlmConfig.and.returnValue(of({ provider: 'ollama', model: 'llama3.1:8b' } as LlmConfig));
@@ -36,6 +38,8 @@ describe('LlmConfigComponent', () => {
     mockAgentService.createLlmConfig.and.returnValue(of({ status: 'created', id: 1, name: 'Test' }));
     mockAgentService.updateStoredLlmConfig.and.returnValue(of({ status: 'updated', id: 1, name: 'Test' }));
     mockAgentService.testLlmConfig.and.returnValue(of({ status: 'ok', id: 1, response: 'pong' }));
+    mockAgentService.getFreeLlmToggle.and.returnValue(of({ enabled: false }));
+    mockAgentService.setFreeLlmToggle.and.returnValue(of({ enabled: true, updated_by: 'admin-1' }));
     mockAgentService.generateSessionId.and.returnValue('session-llm-1');
 
     await TestBed.configureTestingModule({
@@ -232,5 +236,33 @@ describe('LlmConfigComponent', () => {
     component.config.model = '';
     component.updateConfig();
     expect(mockAgentService.updateStoredLlmConfig).not.toHaveBeenCalled();
+  });
+
+  // ── Free-tier LLM toggle ─────────────────────────────────────────────
+
+  it('should load the free-tier LLM toggle on init', () => {
+    expect(mockAgentService.getFreeLlmToggle).toHaveBeenCalledTimes(1);
+    expect(component.freeLlmEnabled).toBe(false);
+    expect(component.freeLlmLoading()).toBe(false);
+  });
+
+  it('onFreeLlmToggle should call setFreeLlmToggle with the new value', () => {
+    component.freeLlmEnabled = true;
+    component.onFreeLlmToggle();
+    expect(mockAgentService.setFreeLlmToggle).toHaveBeenCalledTimes(1);
+    expect(mockAgentService.setFreeLlmToggle.calls.mostRecent().args[0]).toBe(true);
+  });
+
+  it('onFreeLlmToggle should update freeLlmEnabled from the response', () => {
+    component.freeLlmEnabled = true;
+    component.onFreeLlmToggle();
+    expect(component.freeLlmEnabled).toBe(true);
+    expect(component.freeLlmSaving()).toBe(false);
+  });
+
+  it('onFreeLlmToggle should set saving to false after success', () => {
+    component.freeLlmEnabled = false;
+    component.onFreeLlmToggle();
+    expect(component.freeLlmSaving()).toBe(false);
   });
 });

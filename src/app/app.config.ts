@@ -36,6 +36,7 @@ export const appConfig: ApplicationConfig = {
       },
     }),
     ServiceWorker.registerProvider(),
+    ServiceWorker.updateProvider(),
     { provide: AUTH_CONFIG, useValue: environment.keycloak },
     provideAppInitializer(() => {
       inject(ThemeService).init();

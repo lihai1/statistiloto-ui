@@ -107,6 +107,7 @@ import { TranslatePipe } from '../../pipes/translate.pipe';
       font-size: 14px;
       line-height: 1.5;
       word-wrap: break-word;
+      white-space: pre-wrap;
     }
     .message.user .message-bubble {
       background: var(--primary);
@@ -264,6 +265,7 @@ export class AgentChatComponent implements AfterViewChecked {
       intent: this.intent ?? undefined,
       context: this.context ?? undefined,
       configId: this.configId ?? undefined,
+      lang: this.lang.lang(),
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         this.loading.set(false);
@@ -289,7 +291,8 @@ export class AgentChatComponent implements AfterViewChecked {
       },
       error: (err) => {
         this.loading.set(false);
-        this.toast.error(err.message ?? this.lang.t('common.connectionError'));
+        const msg = err?.error?.message ?? err?.message ?? this.lang.t('common.connectionError');
+        this.toast.error(msg);
       },
     });
   }
@@ -323,7 +326,8 @@ export class AgentChatComponent implements AfterViewChecked {
       },
       error: (err) => {
         this.loading.set(false);
-        this.toast.error(err.message ?? this.lang.t('common.connectionError'));
+        const msg = err?.error?.message ?? err?.message ?? this.lang.t('common.connectionError');
+        this.toast.error(msg);
       },
     });
   }

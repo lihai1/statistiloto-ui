@@ -1,7 +1,11 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { of } from 'rxjs';
 import { AssistantComponent } from './assistant.component';
 import { AgentService } from '../../core/api/agent.service';
+import { AuthService } from '../../core/auth/auth.service';
+import { ToastService } from '../../shared/components/toast/toast.service';
+import { LanguageService } from '../../core/i18n/language.service';
 
 describe('AssistantComponent', () => {
   let fixture: ComponentFixture<AssistantComponent>;
@@ -25,9 +29,22 @@ describe('AssistantComponent', () => {
     mockAgentService.deleteSession.and.returnValue(of({ status: 'deleted', session_id: 'x' }));
     mockAgentService.deleteAllSessions.and.returnValue(of({ status: 'deleted', count: 0 }));
 
+    const mockAuthService = {
+      isAuthenticated: signal(false),
+      username: signal<string | null>(null),
+      isAdmin: signal(false),
+    };
+    const mockToast = jasmine.createSpyObj<ToastService>('ToastService', ['success', 'error', 'info']);
+    const mockLang = { t: (key: string) => key };
+
     await TestBed.configureTestingModule({
       imports: [AssistantComponent],
-      providers: [{ provide: AgentService, useValue: mockAgentService }],
+      providers: [
+        { provide: AgentService, useValue: mockAgentService },
+        { provide: AuthService, useValue: mockAuthService },
+        { provide: ToastService, useValue: mockToast },
+        { provide: LanguageService, useValue: mockLang },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(AssistantComponent);

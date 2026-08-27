@@ -51,6 +51,9 @@ import { AgentWidgetComponent } from './shared/components/agent-widget/agent-wid
           <a routerLink="/analyze" routerLinkActive="active">
             <i class="pi pi-search"></i> {{ 'nav.analyze' | translate }}
           </a>
+          <a routerLink="/simulate" routerLinkActive="active">
+            <i class="pi pi-calculator"></i> {{ 'nav.simulate' | translate }}
+          </a>
           <a routerLink="/saved" routerLinkActive="active">
             <i class="pi pi-bookmark"></i> {{ 'nav.saved' | translate }}
           </a>

@@ -5,6 +5,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { CardModule } from 'primeng/card';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { AgentService, LlmConfigUpdate, LlmConfigRow, LlmConfigTestResponse, LlmModelOption } from '../../../core/api/agent.service';
 import { LanguageService } from '../../../core/i18n/language.service';
 import { ToastService } from '../../../shared/components/toast/toast.service';
@@ -25,7 +26,7 @@ interface ProviderMeta {
 @Component({
   selector: 'app-llm-config',
   standalone: true,
-  imports: [FormsModule, ButtonModule, InputTextModule, SelectModule, CardModule, TranslatePipe, DatePipe],
+  imports: [FormsModule, ButtonModule, InputTextModule, SelectModule, CardModule, ToggleSwitchModule, TranslatePipe, DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p-card header="{{ 'admin.llmConfig' | translate }}" styleClass="admin-card">
@@ -57,10 +58,6 @@ interface ProviderMeta {
                           <i class="pi pi-check-circle"></i>
                         }
                         {{ 'admin.llmConfig.test' | translate }}
-                      </button>
-                      <button class="secondary small" (click)="editConfig(c)">
-                        <i class="pi pi-pencil"></i>
-                        {{ 'admin.llmConfig.edit' | translate }}
                       </button>
                       @if (!c.is_active) {
                         <button class="secondary small" (click)="activateConfig(c)">
@@ -106,6 +103,13 @@ interface ProviderMeta {
                       <span class="detail-label">{{ 'admin.llmConfig.updatedAt' | translate }}</span>
                       <span class="detail-value">{{ c.updated_at * 1000 | date: 'yyyy-MM-dd' }}</span>
                     </div>
+                    <!-- Edit button moved inside the expanded card -->
+                    <div class="detail-actions" (click)="$event.stopPropagation()">
+                      <button class="secondary small" (click)="editConfig(c)">
+                        <i class="pi pi-pencil"></i>
+                        {{ 'admin.llmConfig.edit' | translate }}
+                      </button>
+                    </div>
                     @if (testResult() && testResult()!.id === c.id) {
                       <div class="test-result" [class.ok]="testResult()!.status === 'ok'" [class.err]="testResult()!.status === 'error'">
                         @if (testResult()!.status === 'ok') {
@@ -129,6 +133,32 @@ interface ProviderMeta {
             }
           </div>
         }
+      </div>
+
+      <hr class="divider" />
+
+      <!-- Free-tier LLM toggle -->
+      <div class="free-tier-section">
+        <h4 class="section-title">{{ 'admin.llmConfig.freeTierLlm' | translate }}</h4>
+        <div class="toggle-row">
+          @if (freeLlmLoading()) {
+            <i class="pi pi-spinner pi-spin"></i>
+          } @else {
+            <p-toggleswitch
+              [(ngModel)]="freeLlmEnabled"
+              (onChange)="onFreeLlmToggle()"
+              [disabled]="freeLlmSaving()"
+            ></p-toggleswitch>
+            <span class="toggle-status">
+              @if (freeLlmEnabled) {
+                {{ 'admin.llmConfig.freeTierLlmEnabled' | translate }}
+              } @else {
+                {{ 'admin.llmConfig.freeTierLlmDisabled' | translate }}
+              }
+            </span>
+          }
+        </div>
+        <p class="toggle-hint">{{ 'admin.llmConfig.freeTierLlmHint' | translate }}</p>
       </div>
 
       <hr class="divider" />
@@ -293,15 +323,16 @@ interface ProviderMeta {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 8px;
       padding: 12px;
       cursor: pointer;
       transition: background 0.15s;
     }
     .config-header:hover { background: var(--bg); }
     .config-card.active .config-header { background: rgba(56, 142, 60, 0.05); }
-    .config-info { display: flex; flex-direction: column; gap: 2px; }
-    .config-name { font-weight: 600; font-size: 14px; }
-    .config-details { font-size: 12px; color: var(--text-secondary); }
+    .config-info { display: flex; flex-direction: column; gap: 2px; flex: 0 1 auto; min-width: 0; overflow: hidden; }
+    .config-name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .config-details { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .active-badge {
       display: inline-block;
       font-size: 10px;
@@ -309,10 +340,23 @@ interface ProviderMeta {
       font-weight: 600;
       margin-top: 2px;
     }
-    .config-header-right { display: flex; align-items: center; gap: 8px; }
+    .config-header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
     .config-header-right .pi { font-size: 12px; color: var(--text-secondary); }
-    .config-actions { display: flex; gap: 6px; align-items: center; }
-    .config-actions .small { font-size: 12px; padding: 4px 10px; }
+    .config-actions { display: flex; gap: 4px; align-items: center; flex-wrap: nowrap; }
+    .config-actions .small {
+      font-size: 12px;
+      padding: 4px 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      min-height: 38px;
+      line-height: 1.2;
+      white-space: normal;
+      max-width: 80px;
+      word-break: keep-all;
+      text-align: center;
+    }
     .danger { color: var(--danger); border-color: var(--danger); }
     .danger:hover { background: rgba(211,47,47,0.1); }
     .config-details-expanded {
@@ -328,6 +372,14 @@ interface ProviderMeta {
     }
     .detail-label { color: var(--text-secondary); font-weight: 500; }
     .detail-value { color: var(--text); text-align: end; word-break: break-all; }
+    .detail-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
     .test-result {
       display: flex;
       align-items: flex-start;
@@ -343,6 +395,21 @@ interface ProviderMeta {
     .test-result .pi { font-size: 14px; }
     .test-response { font-size: 11px; opacity: 0.8; word-break: break-word; }
     .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+    .free-tier-section { margin-bottom: 4px; }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+    }
+    .toggle-status { font-size: 14px; font-weight: 500; color: var(--text); }
+    .toggle-hint {
+      font-size: 12px;
+      color: var(--text-secondary);
+      opacity: 0.8;
+      margin: 4px 0 0;
+      line-height: 1.5;
+    }
     .config-form { display: flex; flex-direction: column; gap: 16px; }
     .form-row { display: flex; flex-direction: column; gap: 4px; }
     .form-row label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
@@ -417,8 +484,14 @@ export class LlmConfigComponent implements OnInit {
   testingId = signal<number | null>(null);
   testResult = signal<LlmConfigTestResponse | null>(null);
 
+  // Free-tier LLM toggle state.
+  freeLlmEnabled = false;
+  freeLlmLoading = signal(false);
+  freeLlmSaving = signal(false);
+
   ngOnInit(): void {
     this.loadConfigs();
+    this.loadFreeLlmToggle();
     this.agentService.getLlmConfig().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (cfg) => {
         this.config.provider = cfg.provider;
@@ -441,6 +514,42 @@ export class LlmConfigComponent implements OnInit {
     this.agentService.listLlmConfigs().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => this.configs.set(res.configs),
       error: () => {}, // silently ignore
+    });
+  }
+
+  private loadFreeLlmToggle(): void {
+    this.freeLlmLoading.set(true);
+    this.agentService.getFreeLlmToggle().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res) => {
+        this.freeLlmEnabled = res.enabled;
+        this.freeLlmLoading.set(false);
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.freeLlmLoading.set(false);
+      },
+    });
+  }
+
+  onFreeLlmToggle(): void {
+    this.freeLlmSaving.set(true);
+    this.agentService.setFreeLlmToggle(this.freeLlmEnabled).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res) => {
+        this.freeLlmEnabled = res.enabled;
+        this.freeLlmSaving.set(false);
+        this.toast.success(
+          this.freeLlmEnabled
+            ? this.lang.t('admin.llmConfig.freeTierLlmEnabled')
+            : this.lang.t('admin.llmConfig.freeTierLlmDisabled')
+        );
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        // Revert the toggle to the last known server state.
+        this.freeLlmSaving.set(false);
+        this.loadFreeLlmToggle();
+        this.toast.error(err.message ?? this.lang.t('common.error'));
+      },
     });
   }
 

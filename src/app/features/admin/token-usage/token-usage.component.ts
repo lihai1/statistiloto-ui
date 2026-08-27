@@ -9,7 +9,7 @@ import { ToastService } from '../../../shared/components/toast/toast.service';
 import { TranslatePipe } from '../../../shared/pipes/translate.pipe';
 
 interface TokenUsageRow {
-  userSub: string;
+  userEmail: string;
   tier: string;
   provider: string;
   model: string;
@@ -56,20 +56,20 @@ interface TokenUsageRow {
           <tr>
             <th>{{ 'admin.tokenUsage.user' | translate }}</th>
             <th>{{ 'admin.tokenUsage.tier' | translate }}</th>
-            <th>{{ 'admin.tokenUsage.model' | translate }}</th>
             <th>{{ 'admin.tokenUsage.prompt' | translate }}</th>
             <th>{{ 'admin.tokenUsage.completion' | translate }}</th>
             <th>{{ 'admin.tokenUsage.cost' | translate }}</th>
+            <th>{{ 'admin.tokenUsage.model' | translate }}</th>
           </tr>
         </ng-template>
         <ng-template #body let-row>
           <tr>
-            <td>{{ row.userSub }}</td>
+            <td>{{ row.userEmail }}</td>
             <td><span class="tier-badge tier-{{ row.tier }}">{{ row.tier }}</span></td>
-            <td>{{ row.model }}</td>
             <td>{{ row.promptTokens }}</td>
             <td>{{ row.completionTokens }}</td>
             <td>\${{ row.cost.toFixed(4) }}</td>
+            <td>{{ row.model }}</td>
           </tr>
         </ng-template>
         <ng-template #emptymessage>
@@ -151,7 +151,7 @@ export class TokenUsageComponent implements OnInit {
         this.loading.set(false);
         const rows = res.rows ?? [];
         this.usageData.set(rows.map((r) => ({
-          userSub: r.user_sub ?? '',
+          userEmail: r.user_email ?? r.user_sub ?? '',
           tier: r.tier ?? 'free',
           provider: r.provider ?? '',
           model: r.model ?? '',

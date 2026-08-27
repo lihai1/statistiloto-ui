@@ -339,7 +339,15 @@ export class AssistantComponent implements OnInit {
     this.loadSessionList();
     if (this.isAdmin()) {
       this.agentService.listLlmConfigs().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-        next: (res) => this.llmConfigs.set(res.configs),
+        next: (res) => {
+          this.llmConfigs.set(res.configs);
+          // Pre-select the currently active LLM config so the dropdown
+          // reflects the live agent state on page load.
+          const active = res.configs.find((c) => c.is_active);
+          if (active) {
+            this.selectedConfigId = active.id;
+          }
+        },
         error: () => {}, // silently ignore — admin endpoint may not be available
       });
     }

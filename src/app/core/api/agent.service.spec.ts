@@ -96,4 +96,29 @@ describe('AgentService', () => {
     // Should be unique across calls
     expect(id).not.toBe(service.generateSessionId());
   });
+
+  it('getFreeLlmToggle() should GET /api/agent/free-llm', () => {
+    const mockResponse = { enabled: false };
+
+    service.getFreeLlmToggle().subscribe((res) => {
+      expect(res).toEqual(mockResponse);
+    });
+
+    const testReq = httpMock.expectOne(`${base}/free-llm`);
+    expect(testReq.request.method).toBe('GET');
+    testReq.flush(mockResponse);
+  });
+
+  it('setFreeLlmToggle() should PUT /api/agent/free-llm with {enabled: boolean}', () => {
+    const mockResponse = { enabled: true, updated_by: 'admin-1' };
+
+    service.setFreeLlmToggle(true).subscribe((res) => {
+      expect(res).toEqual(mockResponse);
+    });
+
+    const testReq = httpMock.expectOne(`${base}/free-llm`);
+    expect(testReq.request.method).toBe('PUT');
+    expect(testReq.request.body).toEqual({ enabled: true });
+    testReq.flush(mockResponse);
+  });
 });

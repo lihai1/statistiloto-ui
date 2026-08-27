@@ -8,6 +8,8 @@ import {
   LotteryResultResponse,
   SaveNumbersRequest,
   SavedNumbersResponse,
+  SimulateRequest,
+  SimulateResultResponse,
   StatisticsRequest,
   UserProfileResponse,
 } from '../../shared/models/lottery.models';
@@ -32,6 +34,10 @@ export class ApiService {
 
   analyze(req: AnalyzeRequest): Observable<LotteryResultResponse> {
     return this.http.post<LotteryResultResponse>(`${this.base}/generate/analyze`, req);
+  }
+
+  simulate(req: SimulateRequest): Observable<SimulateResultResponse> {
+    return this.http.post<SimulateResultResponse>(`${this.base}/generate/simulate`, req);
   }
 
   // ── Saved numbers (owned by Java BFF) ─────────────────────────
